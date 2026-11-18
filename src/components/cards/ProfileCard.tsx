@@ -17,11 +17,12 @@ export function ProfileCard({
   onInterest: (id: string) => void;
 }) {
   const { owner, ready } = usePresence();
-  const { users: profiles } = useDiscordProfiles();
+  const { users: profiles, statuses } = useDiscordProfiles();
+  const bot = statuses[OWNER_DISCORD_ID];
   const user = owner?.discord_user ?? profiles[OWNER_DISCORD_ID] ?? undefined;
   const name = displayName(user);
   const quote = withSpeechMarks(kvString(owner?.kv, "quote") || quoteFallback);
-  const status = owner?.discord_status ?? "offline";
+  const status = owner?.discord_status ?? bot?.status ?? "offline";
   const quoteRef = useRef<HTMLQuoteElement>(null);
   const [roomy, setRoomy] = useState(false);
 
@@ -54,7 +55,7 @@ export function ProfileCard({
           <p className="handle">{user ? `@${user.username}` : "@thepotatogamer"}</p>
           <p className={`status-pill ${status}`}>
             <span className={`status-dot inline ${status}`} aria-hidden="true" />
-            {ready ? STATUS_LABEL[status] : "Checking Lanyard"}
+            {owner || bot || ready ? STATUS_LABEL[status] : "Checking Lanyard"}
           </p>
         </div>
       </div>

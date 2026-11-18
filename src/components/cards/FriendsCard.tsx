@@ -12,7 +12,7 @@ const UNKNOWN_ACTIVITY = "Not on lanyard, activity unknown";
 
 export function FriendsCard({ friends }: { friends: FriendConfig[] }) {
   const { users, ready } = usePresence();
-  const { users: profiles } = useDiscordProfiles();
+  const { users: profiles, statuses } = useDiscordProfiles();
 
   return (
     <section className="card friends">
@@ -24,11 +24,21 @@ export function FriendsCard({ friends }: { friends: FriendConfig[] }) {
         <ul className="friend-list">
           {friends.map((friend) => {
             const presence = users[friend.discordId];
+            const bot = statuses[friend.discordId];
             const user = presence?.discord_user ?? profiles[friend.discordId] ?? undefined;
             const quote = withSpeechMarks(kvString(presence?.kv, "quote"));
             const href = safeHttpUrl(kvString(presence?.kv, "url"));
-            const status: DiscordStatus = presence?.discord_status ?? "offline";
-            const missing = ready && presence === null;
+            const status: DiscordStatus = presence?.discord_status ?? bot?.status ?? "offline";
+            const missing = ready && presence === null && !bot;
+            const label = presence
+              ? STATUS_LABEL[presence.discord_status]
+              : bot
+                ? bot.activity
+                  ? `${STATUS_LABEL[bot.status]} · ${bot.activity}`
+                  : STATUS_LABEL[bot.status]
+                : missing
+                  ? UNKNOWN_ACTIVITY
+                  : STATUS_LABEL[status];
             const nameplate = nameplateUrls(user?.collectibles?.nameplate?.asset);
             return (
               <li key={friend.id} className={nameplate ? "friend has-nameplate" : "friend"}>
@@ -37,7 +47,7 @@ export function FriendsCard({ friends }: { friends: FriendConfig[] }) {
                   <Avatar
                     user={user}
                     status={missing ? "offline" : status}
-                    statusTitle={missing ? UNKNOWN_ACTIVITY : STATUS_LABEL[status]}
+                    statusTitle={label}
                     size="sm"
                   />
                 ) : (
@@ -51,7 +61,7 @@ export function FriendsCard({ friends }: { friends: FriendConfig[] }) {
                     <StatusDot
                       inline
                       status={missing ? "offline" : status}
-                      label={missing ? UNKNOWN_ACTIVITY : STATUS_LABEL[status]}
+                      label={label}
                     />
                     {friend.label && user ? <em>{friend.label}</em> : null}
                   </div>

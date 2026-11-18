@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { defaultConfig, OWNER_DISCORD_ID, type SiteConfig, type StorageMode } from "../../shared/site";
 import { useLanyard, type LanyardState } from "../hooks/useLanyard";
 import { api } from "../lib/api";
-import { avatarUrl, kvString } from "../lib/discord";
+import { avatarUrl, botStatuses, kvString, type BotStatus } from "../lib/discord";
 import { withSpeechMarks } from "../lib/format";
 import type { DiscordUser } from "../lib/lanyard";
 import { ThemeProvider, useTheme } from "../theme/ThemeProvider";
@@ -24,9 +24,10 @@ interface ConfigContextValue {
 interface DiscordDirectory {
   configured: boolean;
   users: Record<string, DiscordUser | null>;
+  statuses: Record<string, BotStatus>;
 }
 
-const EMPTY_DIRECTORY: DiscordDirectory = { configured: false, users: {} };
+const EMPTY_DIRECTORY: DiscordDirectory = { configured: false, users: {}, statuses: {} };
 
 const ConfigContext = createContext<ConfigContextValue | null>(null);
 const LanyardContext = createContext<LanyardState | null>(null);
@@ -126,12 +127,32 @@ function DiscordBridge({ idKey, children }: { idKey: string; children: ReactNode
     const controller = new AbortController();
     api<DiscordDirectory>("/api/discord", { signal: controller.signal })
       .then((data) => {
-        if (!controller.signal.aborted) setProfiles(data);
+        if (controller.signal.aborted) return;
+        setProfiles((current) => ({ ...current, configured: data.configured, users: data.users }));
       })
       .catch(() => {
-        if (!controller.signal.aborted) setProfiles(EMPTY_DIRECTORY);
+        if (!controller.signal.aborted) setProfiles((current) => ({ ...current, configured: false, users: {} }));
       });
     return () => controller.abort();
+  }, [idKey]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const load = () => {
+      api<{ statuses?: unknown }>("/api/discord?part=statuses", { signal: controller.signal })
+        .then((data) => {
+          if (!controller.signal.aborted) setProfiles((current) => ({ ...current, statuses: botStatuses(data.statuses) }));
+        })
+        .catch(() => {
+          // Keep the last statuses. A failed refresh should not wipe a status CatTag already returned.
+        });
+    };
+    load();
+    const timer = window.setInterval(load, 120_000);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+    };
   }, [idKey]);
 
   const ownerUser = owner?.discord_user ?? profiles.users[OWNER_DISCORD_ID] ?? null;

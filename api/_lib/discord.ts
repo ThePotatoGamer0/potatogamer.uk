@@ -28,12 +28,12 @@ export async function discordProfiles(): Promise<{
   const token = process.env.DISCORD_BOT_TOKEN?.trim() ?? "";
   if (!token) return { configured: false, users: {} };
 
-  const ids = await allowedIds();
+  const ids = await watchedIds();
   const entries = await Promise.all(ids.map(async (id) => [id, await lookup(id, token)] as const));
   return { configured: true, users: Object.fromEntries(entries) };
 }
 
-async function allowedIds(): Promise<string[]> {
+export async function watchedIds(): Promise<string[]> {
   const config = await readConfig();
   const ids = new Set<string>();
   if (SNOWFLAKE.test(OWNER_DISCORD_ID)) ids.add(OWNER_DISCORD_ID);

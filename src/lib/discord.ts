@@ -1,4 +1,27 @@
-import type { DiscordUser } from "./lanyard";
+import type { DiscordStatus, DiscordUser } from "./lanyard";
+
+const BOT_STATUSES = new Set<DiscordStatus>(["online", "idle", "dnd", "offline"]);
+
+export interface BotStatus {
+  status: DiscordStatus;
+  activity: string;
+}
+
+export function botStatuses(value: unknown): Record<string, BotStatus> {
+  if (!value || typeof value !== "object") return {};
+  const statuses: Record<string, BotStatus> = {};
+  for (const [id, entry] of Object.entries(value)) {
+    if (!/^\d{17,20}$/.test(id) || !entry || typeof entry !== "object") continue;
+    const status = (entry as { status?: unknown }).status;
+    if (typeof status !== "string" || !BOT_STATUSES.has(status as DiscordStatus)) continue;
+    const activity = (entry as { activity?: unknown }).activity;
+    statuses[id] = {
+      status: status as DiscordStatus,
+      activity: typeof activity === "string" ? activity.replace(/\s+/g, " ").trim().slice(0, 80) : "",
+    };
+  }
+  return statuses;
+}
 
 export function avatarUrl(user: Pick<DiscordUser, "id" | "avatar">, size = 256): string {
   if (!user.avatar) return defaultAvatarUrl(user.id);
