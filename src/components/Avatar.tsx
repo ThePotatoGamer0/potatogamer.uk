@@ -1,14 +1,17 @@
 import { useState } from "react";
 import { avatarUrl, decorationUrl, defaultAvatarUrl } from "../lib/discord";
-import type { DiscordStatus, DiscordUser } from "../lib/lanyard";
+import { STATUS_LABEL, type DiscordStatus, type DiscordUser } from "../lib/lanyard";
+import { StatusDot } from "./StatusDot";
 
 export function Avatar({
   user,
   status,
+  statusTitle,
   size = "lg",
 }: {
   user: DiscordUser;
   status?: DiscordStatus;
+  statusTitle?: string;
   size?: "lg" | "sm";
 }) {
   const [src, setSrc] = useState(() => avatarUrl(user, size === "lg" ? 256 : 128));
@@ -26,7 +29,7 @@ export function Avatar({
         onError={() => setSrc(defaultAvatarUrl(user.id))}
       />
       {decoration ? <img className="decoration" src={decorationUrl(decoration)} alt="" /> : null}
-      {status ? <span className={`status-dot ${status}`} title={status} /> : null}
+      {status ? <StatusDot status={status} label={statusTitle || STATUS_LABEL[status]} /> : null}
     </div>
   );
 }
