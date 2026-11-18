@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="potatogamer">
+  <rect width="64" height="64" rx="18" fill="#E39B12"/>
+  <ellipse cx="32" cy="36" rx="16" ry="13" fill="#F6E2B8"/>
+  <circle cx="26" cy="34" r="1.6" fill="#8A5A12"/>
+  <circle cx="33" cy="38" r="1.6" fill="#8A5A12"/>
+  <circle cx="38" cy="32" r="1.4" fill="#8A5A12"/>
+  <path d="M38 22c2-6 8-7 10-4" fill="none" stroke="#2E7D32" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M40 21c4-1 7 2 8 5" fill="none" stroke="#43A047" stroke-width="2" stroke-linecap="round"/>
+</svg>
