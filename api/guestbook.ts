@@ -1,6 +1,6 @@
-import { validateGuestbook, type GuestbookEntry } from "../shared/site";
-import { HttpError, json, readJson, requireAuth } from "./_lib/http";
-import { clientKey, readEntries, storageMode, takeRateLimit, writeEntries } from "./_lib/store";
+import { validateGuestbook, type GuestbookEntry } from "../shared/site.js";
+import { HttpError, json, readJson, requireAuth } from "./_lib/http.js";
+import { clientKey, readEntries, storageMode, takeRateLimit, writeEntries } from "./_lib/store.js";
 
 const ENTRY_LIMIT = 100;
 

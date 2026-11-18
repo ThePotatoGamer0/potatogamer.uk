@@ -6,7 +6,7 @@ import {
   type GuestbookEntry,
   type SiteConfig,
   type StorageMode,
-} from "../../shared/site";
+} from "../../shared/site.js";
 
 const CONFIG_KEY = "site:config";
 const GUESTBOOK_KEY = "guestbook:entries";

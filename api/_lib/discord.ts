@@ -1,5 +1,5 @@
-import { OWNER_DISCORD_ID } from "../../shared/site";
-import { readConfig } from "./store";
+import { OWNER_DISCORD_ID } from "../../shared/site.js";
+import { readConfig } from "./store.js";
 
 const SNOWFLAKE = /^\d{17,20}$/;
 const TTL_MS = 15 * 60 * 1000;

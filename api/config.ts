@@ -1,6 +1,6 @@
-import { normalizeConfig } from "../shared/site";
-import { HttpError, json, readJson, requireAuth } from "./_lib/http";
-import { readConfig, storageMode, writeConfig } from "./_lib/store";
+import { normalizeConfig } from "../shared/site.js";
+import { HttpError, json, readJson, requireAuth } from "./_lib/http.js";
+import { readConfig, storageMode, writeConfig } from "./_lib/store.js";
 
 export async function GET(request: Request): Promise<Response> {
   try {

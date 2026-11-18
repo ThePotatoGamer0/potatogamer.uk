@@ -1,5 +1,5 @@
-import { discordProfiles } from "./_lib/discord";
-import { json } from "./_lib/http";
+import { discordProfiles } from "./_lib/discord.js";
+import { json } from "./_lib/http.js";
 
 export async function GET(): Promise<Response> {
   try {
