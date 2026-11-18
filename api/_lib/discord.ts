@@ -21,14 +21,13 @@ interface CacheEntry {
 
 const cache = new Map<string, CacheEntry>();
 
-export async function discordProfiles(): Promise<{
+export async function discordProfiles(ids: string[]): Promise<{
   configured: boolean;
   users: Record<string, PublicDiscordUser | null>;
 }> {
   const token = process.env.DISCORD_BOT_TOKEN?.trim() ?? "";
-  if (!token) return { configured: false, users: {} };
+  if (!token || ids.length === 0) return { configured: Boolean(token), users: {} };
 
-  const ids = await watchedIds();
   const entries = await Promise.all(ids.map(async (id) => [id, await lookup(id, token)] as const));
   return { configured: true, users: Object.fromEntries(entries) };
 }

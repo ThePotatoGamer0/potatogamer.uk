@@ -113,20 +113,25 @@ function LanyardBridge({ children }: { children: ReactNode }) {
 
   return (
     <LanyardContext.Provider value={lanyard}>
-      <DiscordBridge idKey={ids.join(",")}>{children}</DiscordBridge>
+      <DiscordBridge>{children}</DiscordBridge>
     </LanyardContext.Provider>
   );
 }
 
-function DiscordBridge({ idKey, children }: { idKey: string; children: ReactNode }) {
-  const { loading } = useConfig();
+function DiscordBridge({ children }: { children: ReactNode }) {
   const { registerAvatar } = useTheme();
-  const { owner } = usePresence();
+  const { owner, ready, missing } = usePresence();
   const [profiles, setProfiles] = useState<DiscordDirectory>(EMPTY_DIRECTORY);
+  const missingKey = missing.join(",");
 
   useEffect(() => {
+    if (!ready || !missingKey) {
+      setProfiles((current) => (Object.keys(current.users).length === 0 && Object.keys(current.statuses).length === 0 ? current : { ...current, users: {}, statuses: {} }));
+      return;
+    }
     const controller = new AbortController();
-    api<DiscordDirectory>("/api/discord", { signal: controller.signal })
+    const profileParams = new URLSearchParams({ ids: missingKey });
+    api<DiscordDirectory>(`/api/discord?${profileParams}`, { signal: controller.signal })
       .then((data) => {
         if (controller.signal.aborted) return;
         setProfiles((current) => ({ ...current, configured: data.configured, users: data.users }));
@@ -134,29 +139,27 @@ function DiscordBridge({ idKey, children }: { idKey: string; children: ReactNode
       .catch(() => {
         if (!controller.signal.aborted) setProfiles((current) => ({ ...current, configured: false, users: {} }));
       });
-    return () => controller.abort();
-  }, [idKey]);
 
-  useEffect(() => {
-    if (loading) return;
     let canceled = false;
-    const load = () => {
-      api<{ statuses?: unknown }>("/api/discord?part=statuses")
+    const loadStatuses = () => {
+      const params = new URLSearchParams({ part: "statuses", ids: missingKey });
+      api<{ statuses?: unknown }>(`/api/discord?${params}`, { signal: controller.signal })
         .then((data) => {
-          if (canceled) return;
+          if (canceled || controller.signal.aborted) return;
           setProfiles((current) => ({ ...current, statuses: botStatuses(data.statuses) }));
         })
         .catch(() => {
           // Keep the last statuses. A failed refresh should not wipe a status CatTag already returned.
         });
     };
-    load();
-    const timer = window.setInterval(load, 60_000);
+    loadStatuses();
+    const timer = window.setInterval(loadStatuses, 60_000);
     return () => {
       canceled = true;
+      controller.abort();
       window.clearInterval(timer);
     };
-  }, [idKey, loading]);
+  }, [missingKey, ready]);
 
   const ownerUser = owner?.discord_user ?? profiles.users[OWNER_DISCORD_ID] ?? null;
   const ownerAvatar = ownerUser ? avatarUrl(ownerUser, 128) : null;

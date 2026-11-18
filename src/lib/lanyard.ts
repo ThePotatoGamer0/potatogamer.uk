@@ -99,9 +99,15 @@ export function isPresence(value: unknown): value is LanyardPresence {
   return Boolean(record.discord_user && typeof record.discord_user.id === "string" && record.discord_status);
 }
 
-export async function fetchPresence(id: string, signal?: AbortSignal): Promise<LanyardPresence | null> {
+export interface PresenceLookup {
+  presence: LanyardPresence | null;
+  missing: boolean;
+}
+
+export async function lookupPresence(id: string, signal?: AbortSignal): Promise<PresenceLookup> {
   const response = await fetch(`${LANYARD_REST}/${id}`, { signal });
-  if (!response.ok) return null;
+  if (response.status === 404) return { presence: null, missing: true };
+  if (!response.ok) return { presence: null, missing: false };
   const body = (await response.json()) as { data?: unknown };
-  return isPresence(body.data) ? body.data : null;
+  return { presence: isPresence(body.data) ? body.data : null, missing: false };
 }

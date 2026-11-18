@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { OWNER_DISCORD_ID } from "../../shared/site";
-import { fetchPresence, isPresence, LANYARD_WS, type LanyardPresence } from "../lib/lanyard";
+import { isPresence, lookupPresence, LANYARD_WS, type LanyardPresence, type PresenceLookup } from "../lib/lanyard";
 
 export interface LanyardState {
   users: Record<string, LanyardPresence | null>;
+  missing: string[];
   ready: boolean;
   owner: LanyardPresence | null;
 }
@@ -15,30 +16,37 @@ function parseIds(idKey: string): string[] {
 export function useLanyard(ids: string[]): LanyardState {
   const idKey = ids.join(",");
   const [users, setUsers] = useState<Record<string, LanyardPresence | null>>({});
+  const [missing, setMissing] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const list = parseIds(idKey);
     const controller = new AbortController();
     setReady(false);
+    setMissing([]);
 
     void Promise.all(
       list.map(async (id) => {
         try {
-          return [id, await fetchPresence(id, controller.signal)] as const;
+          return [id, await lookupPresence(id, controller.signal)] as const;
         } catch {
-          return [id, null] as const;
+          return [id, { presence: null, missing: false }] as const;
         }
       }),
-    ).then((rows) => {
-      if (controller.signal.aborted) return;
-      setUsers((current) => {
-        const next = { ...current };
-        for (const [id, presence] of rows) next[id] = presence;
-        return next;
+    )
+      .then((rows) => {
+        if (controller.signal.aborted) return;
+        setUsers((current) => {
+          const next = { ...current };
+          for (const [id, result] of rows) next[id] = result.presence;
+          return next;
+        });
+        setMissing(rows.filter(([, result]) => result.missing).map(([id]) => id).sort());
+        setReady(true);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setReady(true);
       });
-      setReady(true);
-    });
 
     return () => controller.abort();
   }, [idKey]);
@@ -62,16 +70,21 @@ export function useLanyard(ids: string[]): LanyardState {
       if (type !== "INIT_STATE" && type !== "PRESENCE_UPDATE") return;
       if (isPresence(data)) {
         setUsers((current) => ({ ...current, [data.discord_user.id]: data }));
+        setMissing((current) => withoutId(current, data.discord_user.id));
         return;
       }
       if (!data || typeof data !== "object") return;
+      const found: string[] = [];
       setUsers((current) => {
         const next = { ...current };
         for (const value of Object.values(data as Record<string, unknown>)) {
-          if (isPresence(value)) next[value.discord_user.id] = value;
+          if (!isPresence(value)) continue;
+          next[value.discord_user.id] = value;
+          found.push(value.discord_user.id);
         }
         return next;
       });
+      if (found.length > 0) setMissing((current) => withoutIds(current, found));
     };
 
     const connect = () => {
@@ -131,19 +144,21 @@ export function useLanyard(ids: string[]): LanyardState {
       void Promise.all(
         list.map(async (id) => {
           try {
-            return [id, await fetchPresence(id)] as const;
+            return [id, await lookupPresence(id)] as const;
           } catch {
-            return [id, null] as const;
+            return [id, { presence: null, missing: false }] as const;
           }
         }),
       ).then((rows) => {
         setUsers((current) => {
           const next = { ...current };
-          for (const [id, presence] of rows) {
-            if (presence) next[id] = presence;
+          for (const [id, result] of rows) {
+            if (result.presence) next[id] = result.presence;
+            else if (result.missing) next[id] = null;
           }
           return next;
         });
+        setMissing((current) => reviseMissing(current, rows));
       });
     }, 30000);
     return () => window.clearInterval(timer);
@@ -152,9 +167,31 @@ export function useLanyard(ids: string[]): LanyardState {
   return useMemo(
     () => ({
       users,
+      missing,
       ready,
       owner: users[OWNER_DISCORD_ID] ?? null,
     }),
-    [ready, users],
+    [missing, ready, users],
   );
+}
+
+function withoutId(ids: string[], id: string): string[] {
+  return ids.includes(id) ? ids.filter((item) => item !== id) : ids;
+}
+
+function withoutIds(ids: string[], remove: string[]): string[] {
+  const gone = new Set(remove);
+  const next = ids.filter((id) => !gone.has(id));
+  return next.length === ids.length ? ids : next;
+}
+
+function reviseMissing(current: string[], rows: ReadonlyArray<readonly [string, PresenceLookup]>): string[] {
+  const next = new Set(current);
+  for (const [id, result] of rows) {
+    if (result.missing) next.add(id);
+    else if (result.presence) next.delete(id);
+  }
+  const sorted = [...next].sort();
+  if (sorted.length === current.length && sorted.every((id, index) => id === current[index])) return current;
+  return sorted;
 }
