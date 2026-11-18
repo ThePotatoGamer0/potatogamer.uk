@@ -119,6 +119,7 @@ function LanyardBridge({ children }: { children: ReactNode }) {
 }
 
 function DiscordBridge({ idKey, children }: { idKey: string; children: ReactNode }) {
+  const { loading } = useConfig();
   const { registerAvatar } = useTheme();
   const { owner } = usePresence();
   const [profiles, setProfiles] = useState<DiscordDirectory>(EMPTY_DIRECTORY);
@@ -137,23 +138,25 @@ function DiscordBridge({ idKey, children }: { idKey: string; children: ReactNode
   }, [idKey]);
 
   useEffect(() => {
-    const controller = new AbortController();
+    if (loading) return;
+    let canceled = false;
     const load = () => {
-      api<{ statuses?: unknown }>("/api/discord?part=statuses", { signal: controller.signal })
+      api<{ statuses?: unknown }>("/api/discord?part=statuses")
         .then((data) => {
-          if (!controller.signal.aborted) setProfiles((current) => ({ ...current, statuses: botStatuses(data.statuses) }));
+          if (canceled) return;
+          setProfiles((current) => ({ ...current, statuses: botStatuses(data.statuses) }));
         })
         .catch(() => {
           // Keep the last statuses. A failed refresh should not wipe a status CatTag already returned.
         });
     };
     load();
-    const timer = window.setInterval(load, 120_000);
+    const timer = window.setInterval(load, 60_000);
     return () => {
-      controller.abort();
+      canceled = true;
       window.clearInterval(timer);
     };
-  }, [idKey]);
+  }, [idKey, loading]);
 
   const ownerUser = owner?.discord_user ?? profiles.users[OWNER_DISCORD_ID] ?? null;
   const ownerAvatar = ownerUser ? avatarUrl(ownerUser, 128) : null;

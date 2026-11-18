@@ -7,7 +7,7 @@ const GUILD_PRESENCES = 1 << 8;
 const CACHE_KEY = "discord:statuses";
 const FRESH_SECONDS = 120;
 const INTENT_SECONDS = 600;
-const GUILD_LIMIT = 20;
+const GUILD_LIMIT = 50;
 const USER_LIMIT = 100;
 
 export interface BotStatus {
@@ -25,7 +25,7 @@ interface MemoryCache extends StatusCache {
 }
 
 let memoryCache: MemoryCache | null = null;
-let inflight: Promise<Record<string, BotStatus>> | null = null;
+const inflight = new Map<string, Promise<Record<string, BotStatus>>>();
 let loggedIntent = false;
 
 export async function loadStatuses(ids: string[], token: string): Promise<Record<string, BotStatus>> {
@@ -34,12 +34,13 @@ export async function loadStatuses(ids: string[], token: string): Promise<Record
   const key = wanted.join(",");
   const cached = await readCache(key);
   if (cached) return cached;
-  if (!inflight) {
-    inflight = fetchStatuses(wanted, token, key).finally(() => {
-      inflight = null;
-    });
-  }
-  return inflight;
+  const pending = inflight.get(key);
+  if (pending) return pending;
+  const request = fetchStatuses(wanted, token, key).finally(() => {
+    inflight.delete(key);
+  });
+  inflight.set(key, request);
+  return request;
 }
 
 async function fetchStatuses(ids: string[], token: string, key: string): Promise<Record<string, BotStatus>> {
@@ -80,7 +81,10 @@ async function watchGateway(
       if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) socket.close();
     };
 
-    timer = setTimeout(() => finish(), 7000);
+    timer = setTimeout(() => {
+      holdSeconds = 30;
+      finish();
+    }, 10000);
 
     const send = (payload: unknown) => {
       if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(payload));
@@ -111,6 +115,7 @@ async function watchGateway(
           d: {
             token,
             intents: GUILDS | GUILD_PRESENCES,
+            large_threshold: 250,
             properties: { os: "linux", browser: "potatogamer.uk", device: "potatogamer.uk" },
           },
         });
@@ -134,6 +139,7 @@ async function watchGateway(
           if (pending.size === 0) finish();
           return;
         }
+        absorb(packet.d, userIds, statuses);
         requested.add(guildId);
         send({
           op: 8,
@@ -177,10 +183,10 @@ async function watchGateway(
 function absorb(value: unknown, userIds: string[], statuses: Record<string, BotStatus>) {
   if (!value || typeof value !== "object") return;
   const record = value as { members?: unknown; presences?: unknown };
-  if (!Array.isArray(record.presences)) return;
   const wanted = new Set(userIds);
+  if (!Array.isArray(record.presences) && !Array.isArray(record.members)) return;
   const seen = new Set<string>();
-  for (const presence of record.presences) {
+  for (const presence of Array.isArray(record.presences) ? record.presences : []) {
     const parsed = presenceStatus(presence);
     if (!parsed || !wanted.has(parsed.id)) continue;
     seen.add(parsed.id);
