@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { QuietState } from "../QuietState";
 import { usePresence } from "../../context/AppProviders";
 import { discordAssetUrl, emojiUrl } from "../../lib/discord";
@@ -14,8 +14,7 @@ import {
 
 export function ActivityCard() {
   const { owner, ready } = usePresence();
-  const ticking = Boolean(owner && (owner.listening_to_spotify || owner.activities.some((activity) => activity.timestamps?.start)));
-  const now = useTicker(ticking);
+  const now = useTicker(Boolean(owner && (owner.listening_to_spotify || owner.activities.some((activity) => activity.timestamps?.start))));
 
   return (
     <section className="card activity-card" aria-live="polite">
@@ -41,7 +40,8 @@ function ActivityBody({ presence, now }: { presence: LanyardPresence; now: numbe
   const others = presence.activities.filter((activity) => activity.type !== 4 && activity.name !== "Spotify");
   const spotify = presence.listening_to_spotify ? presence.spotify : null;
   const primary = others[0];
-  const extra = spotify ? primary : others[1];
+  const shown = useSettledActivity(spotify, primary);
+  const extra = shown.spotify ? primary : others[1];
   const platform = platformLabel(presence);
 
   return (
@@ -51,11 +51,17 @@ function ActivityBody({ presence, now }: { presence: LanyardPresence; now: numbe
         {STATUS_LABEL[presence.discord_status]}
         {platform ? <span className="status-platform">{platform}</span> : null}
       </p>
-      {custom ? <CustomStatus activity={custom} /> : null}
-      {spotify ? <SpotifyBlock spotify={spotify} now={now} /> : null}
-      {!spotify && primary ? <PresenceBlock activity={primary} now={now} /> : null}
-      {!spotify && !primary ? <QuietState>No game, IDE, or track running.</QuietState> : null}
-      {extra && (spotify || primary) ? (
+      {custom ? <CustomStatus key={custom.state || custom.name} activity={custom} /> : null}
+      {shown.spotify ? <SpotifyBlock key={shown.spotify.track_id} spotify={shown.spotify} now={now} /> : null}
+      {!shown.spotify && shown.primary ? (
+        <PresenceBlock key={activitySignature(null, shown.primary)} activity={shown.primary} now={now} />
+      ) : null}
+      {shown.key === "none" ? (
+        <div className="fade-swap">
+          <QuietState>No game, IDE, or track running.</QuietState>
+        </div>
+      ) : null}
+      {shown.key !== "none" && extra && (shown.spotify || shown.primary) ? (
         <p className="also">
           Also {activityKind(extra.type).toLowerCase()} <strong>{extra.name}</strong>
           {extra.details ? ` — ${extra.details}` : ""}
@@ -65,10 +71,39 @@ function ActivityBody({ presence, now }: { presence: LanyardPresence; now: numbe
   );
 }
 
+/** Discord drops RPC for a moment between tracks. Hold the last one until the next state is clear. */
+const TRACK_GAP_MS = 1600;
+
+function activitySignature(spotify: LanyardSpotify | null, primary: LanyardActivity | undefined): string {
+  if (spotify) return `spotify:${spotify.track_id}`;
+  if (primary) return `presence:${primary.application_id ?? ""}:${primary.name}:${primary.details ?? ""}:${primary.state ?? ""}`;
+  return "none";
+}
+
+function useSettledActivity(spotify: LanyardSpotify | null, primary: LanyardActivity | undefined) {
+  const key = activitySignature(spotify, primary);
+  const latest = useRef({ spotify, primary });
+  latest.current = { spotify, primary };
+  const [shown, setShown] = useState({ key, spotify, primary });
+
+  useEffect(() => {
+    if (key !== "none") {
+      setShown({ key, spotify: latest.current.spotify, primary: latest.current.primary });
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setShown({ key: "none", spotify: null, primary: undefined });
+    }, TRACK_GAP_MS);
+    return () => window.clearTimeout(timer);
+  }, [key]);
+
+  return shown;
+}
+
 function CustomStatus({ activity }: { activity: LanyardActivity }) {
   const emoji = emojiUrl(activity.emoji);
   return (
-    <p className="custom-status">
+    <p className="custom-status fade-swap">
       {emoji ? <img src={emoji} alt={activity.emoji?.name ?? ""} width={22} height={22} /> : null}
       {!emoji && activity.emoji?.name ? <span aria-hidden="true">{activity.emoji.name}</span> : null}
       <span>{activity.state || "Custom status"}</span>
@@ -81,7 +116,7 @@ function SpotifyBlock({ spotify, now }: { spotify: LanyardSpotify; now: number }
   const end = spotify.timestamps.end;
   const ratio = end > start ? Math.min(1, Math.max(0, (now - start) / (end - start))) : 0;
   return (
-    <article className="now-playing">
+    <article className="now-playing fade-swap">
       <img className="cover" src={spotify.album_art_url} alt="" width={72} height={72} />
       <div className="now-copy">
         <p className="kind">Listening to Spotify</p>
@@ -111,7 +146,7 @@ function PresenceBlock({ activity, now }: { activity: LanyardActivity; now: numb
   const ratio = start && end && end > start ? Math.min(1, Math.max(0, (now - start) / (end - start))) : null;
 
   return (
-    <article className="now-playing">
+    <article className="now-playing fade-swap">
       <div className="cover-wrap">
         {art ? (
           <img className="cover" src={art} alt={activity.assets?.large_text || ""} width={72} height={72} />

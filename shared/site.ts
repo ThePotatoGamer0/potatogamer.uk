@@ -12,6 +12,7 @@ export interface KvRow {
   id: string;
   label: string;
   value: string;
+  image: string;
 }
 
 export interface SpecRow {
@@ -36,6 +37,44 @@ export interface FriendConfig {
   label: string;
 }
 
+export const MEDIA_KINDS = ["movie", "tv", "anime", "game"] as const;
+
+export type MediaKind = (typeof MEDIA_KINDS)[number];
+
+export interface MediaPick {
+  id: string;
+  tmdbId: number;
+  kind: MediaKind;
+  name: string;
+  year: string;
+  overview: string;
+  poster: string;
+  backdrop: string;
+}
+
+export function tmdbImage(path: string, size: "w185" | "w500" | "w780"): string | null {
+  if (!/^\/[A-Za-z0-9._/-]+$/.test(path)) return null;
+  return `https://image.tmdb.org/t/p/${size}${path}`;
+}
+
+export function remoteArt(value: unknown): string {
+  if (typeof value !== "string" || value.length > 500) return "";
+  let url: URL;
+  try {
+    url = new URL(value.trim());
+  } catch {
+    return "";
+  }
+  if (url.protocol !== "https:" || url.username || url.password) return "";
+  const host = url.hostname.toLowerCase();
+  if (host !== "steamgriddb.com" && !host.endsWith(".steamgriddb.com")) return "";
+  return url.origin + url.pathname + url.search;
+}
+
+export function mediaArt(value: string, size: "w185" | "w500" | "w780"): string | null {
+  return remoteArt(value) || tmdbImage(value, size);
+}
+
 export interface SiteColor {
   source: "auto" | "manual";
   seed: string;
@@ -48,6 +87,7 @@ export interface SiteConfig {
   homelab: SpecRow[];
   links: SiteLink[];
   friends: FriendConfig[];
+  media: MediaPick[];
   color: SiteColor;
 }
 
@@ -73,21 +113,25 @@ export const defaultConfig: SiteConfig = {
       id: "interest-coding",
       label: "Coding",
       value: "TypeScript, web toys, and whatever the homelab needs next",
+      image: "",
     },
     {
       id: "interest-linux",
       label: "Linux",
       value: "CachyOS on the daily driver",
+      image: "",
     },
     {
       id: "interest-homelab",
       label: "Homelabbing",
       value: "A Raspberry Pi and a pile of self-hosted services",
+      image: "",
     },
     {
       id: "interest-gaming",
       label: "Gaming",
       value: "Comfort games and late-night queues",
+      image: "",
     },
   ],
   setup: [
@@ -121,6 +165,7 @@ export const defaultConfig: SiteConfig = {
     },
   ],
   friends: [],
+  media: [],
 };
 
 export function cleanText(value: unknown, max: number): string {
@@ -230,19 +275,56 @@ function takeSpecs(value: unknown, limit: number, fallback: SpecRow[], replaceLe
   return replaceLegacy && LEGACY_SETUPS.has(signature) ? fallback : rows;
 }
 
-function takeRows(value: unknown, limit: number): KvRow[] {
-  if (!Array.isArray(value)) return [];
+function takeRows(value: unknown, limit: number, mode: "read" | "write"): { ok: true; items: KvRow[] } | { ok: false; error: string } {
+  if (!Array.isArray(value)) {
+    if (mode === "read") return { ok: true, items: defaultConfig.interests };
+    return { ok: false, error: "Interests must be a list." };
+  }
   const rows: KvRow[] = [];
   for (const item of value) {
     if (!item || typeof item !== "object") continue;
     const record = item as Partial<KvRow>;
     const label = cleanText(record.label, 80);
     const rowValue = cleanText(record.value, 240);
+    const image = interestImage(record.image);
+    if (!label && !rowValue && !image.raw) continue;
+    if (image.error) {
+      if (mode === "write") {
+        return { ok: false, error: `“${label || "Interest"}” needs a picture from the file picker or clipboard, or leave it blank.` };
+      }
+    }
     if (!label && !rowValue) continue;
-    rows.push({ id: cleanId(record.id), label, value: rowValue });
+    rows.push({ id: cleanId(record.id), label, value: rowValue, image: image.url });
     if (rows.length >= limit) break;
   }
-  return rows;
+  if (mode === "write") {
+    const weight = rows.reduce((sum, row) => sum + row.image.length, 0);
+    if (weight > 700_000) {
+      return { ok: false, error: "Those pictures are too large to save together. Clear one, or choose a simpler image." };
+    }
+  }
+  return { ok: true, items: rows };
+}
+
+const DATA_IMAGE = /^data:image\/(png|jpeg|jpg|webp|gif);base64,[a-z0-9+/=]+$/i;
+
+function interestImage(value: unknown): { url: string; raw: string; error: boolean } {
+  if (typeof value !== "string") return { url: "", raw: "", error: false };
+  const raw = value.trim();
+  if (!raw) return { url: "", raw: "", error: false };
+  if (raw.startsWith("data:")) {
+    const compact = raw.replace(/\s/g, "");
+    if (compact.length > 48_000 || !DATA_IMAGE.test(compact)) return { url: "", raw, error: true };
+    return { url: compact, raw, error: false };
+  }
+  if (raw.length > 800) return { url: "", raw, error: true };
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:") return { url: "", raw, error: true };
+    return { url: raw, raw, error: false };
+  } catch {
+    return { url: "", raw, error: true };
+  }
 }
 
 export type ConfigResult =
@@ -260,16 +342,23 @@ export function normalizeConfig(input: unknown, mode: "read" | "write"): ConfigR
   if (!links.ok) return links;
   const friends = normalizeFriends(source.friends, mode);
   if (!friends.ok) return friends;
+  const media = normalizeMedia(source.media, mode);
+  if (!media.ok) return media;
+  const interests = source.interests === undefined
+    ? { ok: true as const, items: defaultConfig.interests }
+    : takeRows(source.interests, 24, mode);
+  if (!interests.ok) return interests;
 
   return {
     ok: true,
     config: {
       quote: source.quote === undefined ? defaultConfig.quote : cleanText(source.quote, 280),
-      interests: Array.isArray(source.interests) ? takeRows(source.interests, 24) : defaultConfig.interests,
+      interests: interests.items,
       setup: takeSpecs(source.setup, 24, defaultConfig.setup, true),
       homelab: takeSpecs(source.homelab, 24, defaultConfig.homelab, true),
       links: links.items,
       friends: friends.items,
+      media: media.items,
       color: normalizeColor(source.color),
     },
   };
@@ -316,6 +405,70 @@ function normalizeLinks(
       icon: isIcon(record.icon) ? record.icon : "link",
     });
     if (items.length >= 12) break;
+  }
+  return { ok: true, items };
+}
+
+function isMediaKind(value: unknown): value is MediaKind {
+  return typeof value === "string" && (MEDIA_KINDS as readonly string[]).includes(value);
+}
+
+function mediaId(value: unknown): number | null {
+  const id = typeof value === "number" ? value : typeof value === "string" && /^\d{1,10}$/.test(value) ? Number(value) : NaN;
+  if (!Number.isSafeInteger(id) || id < 1) return null;
+  return id;
+}
+
+function mediaPath(value: unknown): string {
+  return typeof value === "string" && /^\/[A-Za-z0-9._/-]+$/.test(value) ? value : "";
+}
+
+function normalizeMedia(
+  value: unknown,
+  mode: "read" | "write",
+): { ok: true; items: MediaPick[] } | { ok: false; error: string } {
+  if (value === undefined) return { ok: true, items: [] };
+  if (!Array.isArray(value)) {
+    if (mode === "read") return { ok: true, items: [] };
+    return { ok: false, error: "Media must be a list." };
+  }
+
+  const items: MediaPick[] = [];
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const record = item as Partial<MediaPick> & { title?: unknown };
+    const name = cleanText(record.name ?? record.title, 120);
+    const tmdbId = mediaId(record.tmdbId);
+    if (!name || tmdbId === null || !isMediaKind(record.kind)) {
+      if (mode === "write" && (name || record.tmdbId !== undefined || record.kind !== undefined)) {
+        return {
+          ok: false,
+          error:
+            record.kind === "game"
+              ? "Each game has to be chosen from the SteamGridDB search."
+              : "Each featured title has to be chosen from the TMDB search.",
+        };
+      }
+      continue;
+    }
+    const game = record.kind === "game";
+    const poster = game ? remoteArt(record.poster) : mediaPath(record.poster);
+    const backdrop = game ? remoteArt(record.backdrop) : mediaPath(record.backdrop);
+    if (game && !poster) {
+      if (mode === "write") return { ok: false, error: "Each game has to be chosen from the SteamGridDB search." };
+      continue;
+    }
+    items.push({
+      id: cleanId(record.id),
+      tmdbId,
+      kind: record.kind,
+      name,
+      year: cleanText(record.year, 4).replace(/\D/g, "").slice(0, 4),
+      overview: cleanText(record.overview, 180),
+      poster,
+      backdrop,
+    });
+    if (items.length >= 24) break;
   }
   return { ok: true, items };
 }

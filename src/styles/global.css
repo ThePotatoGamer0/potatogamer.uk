@@ -1,3 +1,40 @@
+@property --md-sys-color-primary { syntax: "<color>"; inherits: true; initial-value: #8a5a00; }
+@property --md-sys-color-on-primary { syntax: "<color>"; inherits: true; initial-value: #ffffff; }
+@property --md-sys-color-primary-container { syntax: "<color>"; inherits: true; initial-value: #ffdea6; }
+@property --md-sys-color-on-primary-container { syntax: "<color>"; inherits: true; initial-value: #281900; }
+@property --md-sys-color-secondary { syntax: "<color>"; inherits: true; initial-value: #6f5b40; }
+@property --md-sys-color-on-secondary { syntax: "<color>"; inherits: true; initial-value: #ffffff; }
+@property --md-sys-color-secondary-container { syntax: "<color>"; inherits: true; initial-value: #f3e2c4; }
+@property --md-sys-color-on-secondary-container { syntax: "<color>"; inherits: true; initial-value: #241a04; }
+@property --md-sys-color-tertiary { syntax: "<color>"; inherits: true; initial-value: #51664c; }
+@property --md-sys-color-on-tertiary { syntax: "<color>"; inherits: true; initial-value: #ffffff; }
+@property --md-sys-color-tertiary-container { syntax: "<color>"; inherits: true; initial-value: #d5e8d0; }
+@property --md-sys-color-on-tertiary-container { syntax: "<color>"; inherits: true; initial-value: #0d1f0c; }
+@property --md-sys-color-error { syntax: "<color>"; inherits: true; initial-value: #ba1a1a; }
+@property --md-sys-color-on-error { syntax: "<color>"; inherits: true; initial-value: #ffffff; }
+@property --md-sys-color-error-container { syntax: "<color>"; inherits: true; initial-value: #ffdad6; }
+@property --md-sys-color-on-error-container { syntax: "<color>"; inherits: true; initial-value: #410002; }
+@property --md-sys-color-background { syntax: "<color>"; inherits: true; initial-value: #fff8f3; }
+@property --md-sys-color-on-background { syntax: "<color>"; inherits: true; initial-value: #1d1c16; }
+@property --md-sys-color-surface { syntax: "<color>"; inherits: true; initial-value: #fff8f3; }
+@property --md-sys-color-on-surface { syntax: "<color>"; inherits: true; initial-value: #1d1c16; }
+@property --md-sys-color-surface-variant { syntax: "<color>"; inherits: true; initial-value: #e8e0d4; }
+@property --md-sys-color-on-surface-variant { syntax: "<color>"; inherits: true; initial-value: #4d4639; }
+@property --md-sys-color-outline { syntax: "<color>"; inherits: true; initial-value: #7e7667; }
+@property --md-sys-color-outline-variant { syntax: "<color>"; inherits: true; initial-value: #d2c5b4; }
+@property --md-sys-color-shadow { syntax: "<color>"; inherits: true; initial-value: #000000; }
+@property --md-sys-color-scrim { syntax: "<color>"; inherits: true; initial-value: #000000; }
+@property --md-sys-color-inverse-surface { syntax: "<color>"; inherits: true; initial-value: #333027; }
+@property --md-sys-color-inverse-on-surface { syntax: "<color>"; inherits: true; initial-value: #f7f0e6; }
+@property --md-sys-color-inverse-primary { syntax: "<color>"; inherits: true; initial-value: #f8bd4a; }
+@property --md-sys-color-surface-dim { syntax: "<color>"; inherits: true; initial-value: #e0d9ce; }
+@property --md-sys-color-surface-bright { syntax: "<color>"; inherits: true; initial-value: #fff8f3; }
+@property --md-sys-color-surface-container-lowest { syntax: "<color>"; inherits: true; initial-value: #ffffff; }
+@property --md-sys-color-surface-container-low { syntax: "<color>"; inherits: true; initial-value: #faf2e8; }
+@property --md-sys-color-surface-container { syntax: "<color>"; inherits: true; initial-value: #f4ece2; }
+@property --md-sys-color-surface-container-high { syntax: "<color>"; inherits: true; initial-value: #eee6db; }
+@property --md-sys-color-surface-container-highest { syntax: "<color>"; inherits: true; initial-value: #e8e0d4; }
+
 :root {
   color-scheme: light;
   --md-sys-color-primary: #8a5a00;
@@ -28,6 +65,41 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  transition:
+    --md-sys-color-primary 560ms ease,
+    --md-sys-color-on-primary 560ms ease,
+    --md-sys-color-primary-container 560ms ease,
+    --md-sys-color-on-primary-container 560ms ease,
+    --md-sys-color-secondary 560ms ease,
+    --md-sys-color-on-secondary 560ms ease,
+    --md-sys-color-secondary-container 560ms ease,
+    --md-sys-color-on-secondary-container 560ms ease,
+    --md-sys-color-tertiary 560ms ease,
+    --md-sys-color-on-tertiary 560ms ease,
+    --md-sys-color-tertiary-container 560ms ease,
+    --md-sys-color-on-tertiary-container 560ms ease,
+    --md-sys-color-error 560ms ease,
+    --md-sys-color-on-error 560ms ease,
+    --md-sys-color-error-container 560ms ease,
+    --md-sys-color-on-error-container 560ms ease,
+    --md-sys-color-background 560ms ease,
+    --md-sys-color-on-background 560ms ease,
+    --md-sys-color-surface 560ms ease,
+    --md-sys-color-on-surface 560ms ease,
+    --md-sys-color-surface-variant 560ms ease,
+    --md-sys-color-on-surface-variant 560ms ease,
+    --md-sys-color-outline 560ms ease,
+    --md-sys-color-outline-variant 560ms ease,
+    --md-sys-color-inverse-surface 560ms ease,
+    --md-sys-color-inverse-on-surface 560ms ease,
+    --md-sys-color-inverse-primary 560ms ease,
+    --md-sys-color-surface-dim 560ms ease,
+    --md-sys-color-surface-bright 560ms ease,
+    --md-sys-color-surface-container-lowest 560ms ease,
+    --md-sys-color-surface-container-low 560ms ease,
+    --md-sys-color-surface-container 560ms ease,
+    --md-sys-color-surface-container-high 560ms ease,
+    --md-sys-color-surface-container-highest 560ms ease;
 }
 
 :root[data-theme="dark"] {
@@ -171,6 +243,12 @@ a { color: inherit; }
   border-radius: 0;
   background: var(--md-sys-color-primary-container);
   color: var(--md-sys-color-on-primary-container);
+}
+.brand-mark img {
+  width: 36px;
+  height: 36px;
+  display: block;
+  object-fit: cover;
 }
 
 .theme-switcher {
@@ -351,12 +429,23 @@ h2 {
 .chip:active, .btn:active, .icon-btn:active { transform: scale(0.98); }
 
 .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 8px 12px;
   background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
   font-family: "Plus Jakarta Sans", Inter, sans-serif;
   font-weight: 700;
   font-size: 0.85rem;
+}
+.chip.has-shot { padding-left: 6px; }
+.chip-shot {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  object-fit: cover;
+  background: none;
 }
 
 .btn {
@@ -441,6 +530,7 @@ h2 {
   border-radius: 50%;
   border: 3px solid var(--md-sys-color-surface-container-low);
   background: #80848e;
+  transition: background-color 480ms ease, border-color 480ms ease;
 }
 .avatar-stack .status-dot { position: absolute; right: 14px; bottom: 14px; }
 .avatar-stack.sm .status-dot { right: 4px; bottom: 4px; width: 12px; height: 12px; }
@@ -545,9 +635,16 @@ h2 {
   height: 100%;
   border-radius: inherit;
   background: var(--md-sys-color-primary);
+  transition: width 500ms linear;
 }
 
-.mono, .kv dd, .time, .elapsed, .counter, .friend-id {
+@keyframes state-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.fade-swap { animation: state-in 480ms ease; }
+
+.mono, .time, .elapsed, .counter, .friend-id {
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
 }
@@ -664,25 +761,178 @@ h2 {
   font-weight: 600;
 }
 
-.kv { display: flex; flex-direction: column; }
-#interests, #setup, #homelab, .kv-row { scroll-margin-top: 96px; }
+#interests, #setup, #homelab, #media, .interest-tile { scroll-margin-top: 96px; }
 
-.kv-row {
+.media-stage {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(96px, 0.7fr) 1.4fr;
-  gap: 12px;
-  padding: 12px 0;
-  border-top: 1px solid var(--md-sys-color-outline-variant);
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 22px;
+  align-items: center;
+  min-height: 300px;
+  margin-top: 8px;
+  padding: 18px;
+  overflow: hidden;
+  border-radius: 24px;
+  background: var(--md-sys-color-surface-container);
 }
-.kv-row:first-child { border-top: 0; }
-.kv dt { font-weight: 700; }
-.kv dd { margin: 0; font-size: 0.86rem; }
-.kv-row.is-hot {
-  padding-inline: 12px;
-  border-radius: 16px;
-  border-top-color: transparent;
+.media-layer {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: subgrid;
+  gap: 22px;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 700ms ease;
+  pointer-events: none;
+}
+.media-layer.active { opacity: 1; z-index: 1; }
+.media-wash {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.34;
+  pointer-events: none;
+  mask-image: linear-gradient(90deg, transparent, #000 38%, #000 70%, transparent);
+}
+.poster-frame { position: relative; z-index: 1; width: 200px; height: 280px; pointer-events: none; }
+.media-layer.active .poster-frame { pointer-events: auto; }
+.poster {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   background: var(--md-sys-color-primary-container);
   color: var(--md-sys-color-on-primary-container);
+}
+.poster.monogram {
+  display: grid;
+  place-items: center;
+  font-family: "Plus Jakarta Sans", Inter, sans-serif;
+  font-weight: 800;
+  font-size: 3rem;
+}
+.media-copy { position: relative; z-index: 1; min-width: 0; }
+.media-stage.has-controls .media-copy { padding-bottom: 52px; }
+.media-copy h3 {
+  margin: 4px 0 8px;
+  font-family: "Plus Jakarta Sans", Inter, sans-serif;
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+.media-copy .kind {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.media-copy .kind span { color: var(--md-sys-color-on-surface-variant); letter-spacing: 0; text-transform: none; font-weight: 600; }
+.media-overview {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 52ch;
+  color: var(--md-sys-color-on-surface-variant);
+}
+.media-controls {
+  grid-column: 2;
+  grid-row: 1;
+  z-index: 2;
+  align-self: end;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.media-dots { display: flex; flex-wrap: wrap; gap: 6px; }
+.media-dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 28%, transparent);
+  transition: width 280ms ease, background-color 280ms ease;
+}
+.media-dot.current { width: 22px; background: var(--md-sys-color-primary); }
+.media-controls .icon-btn { font-size: 1.4rem; line-height: 1; }
+.media-search { display: flex; gap: 10px; align-items: end; margin-bottom: 12px; }
+.media-search .media-kind { width: 140px; flex: none; }
+.media-search .btn { flex: none; margin-bottom: 0; }
+.media-note { margin-bottom: 12px; }
+.media-hits, .media-picks { display: flex; flex-direction: column; gap: 8px; }
+.media-picks { margin-top: 14px; }
+.media-hit, .media-pick {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--md-sys-color-surface-container);
+  color: inherit;
+  text-align: left;
+}
+.media-hit { cursor: pointer; }
+.media-hit:hover { background: var(--md-sys-color-secondary-container); }
+.media-hit strong, .media-pick strong, .media-hit small, .media-pick small { display: block; }
+.media-hit small, .media-pick small { color: var(--md-sys-color-on-surface-variant); font-weight: 600; }
+.media-pick-copy { flex: 1; min-width: 0; }
+.media-thumb {
+  width: 42px;
+  height: 62px;
+  flex: none;
+  object-fit: cover;
+  border-radius: 8px;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+.media-thumb.monogram {
+  display: grid;
+  place-items: center;
+  font-family: "Plus Jakarta Sans", Inter, sans-serif;
+  font-weight: 800;
+}
+
+.interest-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.interest-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 20px;
+  background: var(--md-sys-color-surface-container);
+}
+.interest-tile.is-hot { outline: 2px solid var(--md-sys-color-primary); }
+.interest-shot {
+  width: 64px;
+  height: 64px;
+  flex: none;
+  object-fit: cover;
+  border-radius: 16px;
+  background: none;
+}
+.interest-copy { min-width: 0; }
+.interest-copy strong,
+.interest-copy small { display: block; overflow-wrap: anywhere; }
+.interest-copy strong { font-size: 0.95rem; line-height: 1.25; }
+.interest-copy small {
+  margin-top: 2px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .guest-form, .stack { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
@@ -698,6 +948,15 @@ h2 {
 }
 .field textarea { resize: vertical; min-height: 88px; }
 .field small { font-weight: 500; color: var(--md-sys-color-on-surface-variant); }
+.editor-row.interests .image-field { grid-column: 1 / -1; grid-row: 2; }
+.editor-row.interests .row-actions { grid-column: 3; grid-row: 1; }
+.image-line { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.image-line .interest-shot { width: 56px; height: 56px; flex: none; }
+.interest-shot.empty {
+  display: block;
+  border: 1px dashed var(--md-sys-color-outline-variant);
+}
+.field-error { color: var(--md-sys-color-error); }
 .color-field { margin-top: 14px; max-width: 220px; }
 .color-field input[type="color"] {
   width: 72px;
@@ -864,11 +1123,17 @@ h2 {
 @media (max-width: 980px) {
   .span-4, .span-5, .span-6, .span-7, .span-8, .span-12 { grid-column: span 12; }
   .editor-row, .editor-row.links, .editor-row.specs { grid-template-columns: 1fr; }
-  .kv-row { grid-template-columns: 1fr; gap: 4px; }
+  .editor-row.interests .image-field,
+  .editor-row.interests .row-actions { grid-column: 1; grid-row: auto; }
+  .interest-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {
   .spec-grid { grid-template-columns: 1fr; }
+  .media-stage, .media-layer { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+  .media-controls { grid-column: 1; justify-content: center; }
+  .media-copy .kind { justify-content: center; }
+  .media-overview { margin-inline: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {

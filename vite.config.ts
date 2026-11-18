@@ -13,7 +13,7 @@ function localApi(): Plugin {
 
       server.middlewares.use((req, res, next) => {
         const pathname = (req.url ?? "").split("?")[0];
-        if (pathname !== "/api/config" && pathname !== "/api/guestbook" && pathname !== "/api/discord") {
+        if (pathname !== "/api/config" && pathname !== "/api/guestbook" && pathname !== "/api/discord" && pathname !== "/api/media") {
           next();
           return;
         }
@@ -41,6 +41,7 @@ async function handle(
     "/api/config": "/api/config.ts",
     "/api/guestbook": "/api/guestbook.ts",
     "/api/discord": "/api/discord.ts",
+    "/api/media": "/api/media.ts",
   };
   const mod = await server.ssrLoadModule(modules[pathname] ?? "/api/config.ts");
   const method = req.method ?? "GET";

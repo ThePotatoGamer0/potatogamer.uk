@@ -5,6 +5,7 @@ import { displayName, kvString } from "../../lib/discord";
 import { withSpeechMarks } from "../../lib/format";
 import { STATUS_LABEL } from "../../lib/lanyard";
 import { Avatar } from "../Avatar";
+import { InterestImage } from "../InterestImage";
 
 export function ProfileCard({
   quoteFallback,
@@ -49,7 +50,7 @@ export function ProfileCard({
           </div>
         )}
         <div className="profile-id">
-          <h1>{name}</h1>
+          <h1 key={name} className="fade-swap">{name}</h1>
           <p className="handle">{user ? `@${user.username}` : "@thepotatogamer"}</p>
           <p className={`status-pill ${status}`}>
             <span className={`status-dot inline ${status}`} aria-hidden="true" />
@@ -58,13 +59,14 @@ export function ProfileCard({
         </div>
       </div>
       <blockquote ref={quoteRef} className={roomy ? "quote roomy" : "quote"}>
-        <span>{quote}</span>
+        <span key={quote} className="fade-swap">{quote}</span>
       </blockquote>
       {interests.length > 0 ? (
         <div className="chips" aria-label="Interests">
           {interests.map((interest) =>
             interest.label ? (
-              <button key={interest.id} type="button" className="chip" onClick={() => onInterest(interest.id)}>
+              <button key={interest.id} type="button" className={interest.image ? "chip has-shot" : "chip"} onClick={() => onInterest(interest.id)}>
+                {interest.image ? <InterestImage src={interest.image} className="chip-shot" /> : null}
                 {interest.label}
               </button>
             ) : null,

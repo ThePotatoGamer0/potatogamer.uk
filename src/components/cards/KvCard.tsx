@@ -1,4 +1,5 @@
 import type { KvRow } from "../../../shared/site";
+import { InterestImage } from "../InterestImage";
 import { QuietState } from "../QuietState";
 
 export function KvCard({
@@ -23,18 +24,21 @@ export function KvCard({
       {rows.length === 0 ? (
         <QuietState>{empty}</QuietState>
       ) : (
-        <dl className="kv">
+        <ul className="interest-grid">
           {rows.map((row) => (
-            <div
+            <li
               key={row.id}
               id={id === "interests" ? `row-${row.id}` : undefined}
-              className={highlightId && highlightId === row.id ? "kv-row is-hot" : "kv-row"}
+              className={highlightId && highlightId === row.id ? "interest-tile is-hot" : "interest-tile"}
             >
-              <dt>{row.label}</dt>
-              <dd>{row.value}</dd>
-            </div>
+              {row.image ? <InterestImage src={row.image} /> : null}
+              <span className="interest-copy">
+                <strong>{row.label}</strong>
+                {row.value ? <small>{row.value}</small> : null}
+              </span>
+            </li>
           ))}
-        </dl>
+        </ul>
       )}
     </section>
   );

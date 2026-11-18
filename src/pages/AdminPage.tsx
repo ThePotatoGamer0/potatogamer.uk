@@ -1,9 +1,11 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { ICON_NAMES, SPEC_ICONS, normalizeConfig, type FriendConfig, type GuestbookEntry, type KvRow, type SiteConfig, type SiteLink, type SpecIcon, type SpecRow } from "../../shared/site";
+import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
+import { ICON_NAMES, MEDIA_KINDS, SPEC_ICONS, mediaArt, normalizeConfig, type FriendConfig, type GuestbookEntry, type KvRow, type MediaKind, type MediaPick, type SiteConfig, type SiteLink, type SpecIcon, type SpecRow } from "../../shared/site";
 import { useConfig } from "../context/AppProviders";
 import { ApiError, api } from "../lib/api";
+import { imageFileFromClipboard, imageFileToDataUri } from "../lib/interestImage";
 import { formatStamp } from "../lib/format";
 import { clearAdminPassword, readAdminPassword, writeAdminPassword } from "../lib/session";
+import { InterestImage } from "../components/InterestImage";
 import { QuietState } from "../components/QuietState";
 import { Toast, useToast } from "../components/Toast";
 
@@ -226,7 +228,7 @@ export function AdminPage() {
 
           <PairEditor
             title="Interests"
-            description="Labels become the chips on the profile card."
+            description="Labels become the chips on the profile card. Add a picture with the file picker, or paste one onto the row."
             keyName="Label"
             valueName="Value"
             rows={draft.interests}
@@ -248,6 +250,7 @@ export function AdminPage() {
             rows={draft.homelab}
             onChange={(homelab) => setDraft({ ...draft, homelab })}
           />
+          <MediaEditor picks={draft.media} onChange={(media) => setDraft({ ...draft, media })} />
           <LinkEditor links={draft.links} onChange={(links) => setDraft({ ...draft, links })} />
           <FriendEditor friends={draft.friends} onChange={(friends) => setDraft({ ...draft, friends })} />
 
@@ -326,50 +329,141 @@ function PairEditor({
           <h2>{title}</h2>
           <p className="muted">{description}</p>
         </div>
-        <button type="button" className="btn tonal" onClick={() => onChange([...rows, { id: newId("row"), label: "", value: "" }])}>
+        <button type="button" className="btn tonal" onClick={() => onChange([...rows, { id: newId("row"), label: "", value: "", image: "" }])}>
           Add
         </button>
       </div>
       <div className="editor-list">
         {rows.map((row, index) => (
-          <div key={row.id} className="editor-row">
-            <label className="field">
-              <span>{keyName}</span>
-              <input
-                value={row.label}
-                aria-label={`${title} ${keyName} ${index + 1}`}
-                onChange={(event) => onChange(updateRow(rows, index, { ...row, label: event.target.value }))}
-              />
-            </label>
-            <label className="field">
-              <span>{valueName}</span>
-              <input
-                value={row.value}
-                aria-label={`${title} ${valueName} ${index + 1}`}
-                onChange={(event) => onChange(updateRow(rows, index, { ...row, value: event.target.value }))}
-              />
-            </label>
-            <div className="row-actions">
-              <button type="button" className="icon-btn" aria-label="Move up" disabled={index === 0} onClick={() => onChange(moveItem(rows, index, -1))}>
-                ↑
-              </button>
-              <button
-                type="button"
-                className="icon-btn"
-                aria-label="Move down"
-                disabled={index === rows.length - 1}
-                onClick={() => onChange(moveItem(rows, index, 1))}
-              >
-                ↓
-              </button>
-              <button type="button" className="icon-btn danger" aria-label="Remove" onClick={() => onChange(rows.filter((item) => item.id !== row.id))}>
-                ✕
-              </button>
-            </div>
-          </div>
+          <InterestRow
+            key={row.id}
+            title={title}
+            keyName={keyName}
+            valueName={valueName}
+            row={row}
+            index={index}
+            total={rows.length}
+            onChange={(next) => onChange(updateRow(rows, index, next))}
+            onMove={(direction) => onChange(moveItem(rows, index, direction))}
+            onRemove={() => onChange(rows.filter((item) => item.id !== row.id))}
+          />
         ))}
       </div>
     </section>
+  );
+}
+
+function InterestRow({
+  title,
+  keyName,
+  valueName,
+  row,
+  index,
+  total,
+  onChange,
+  onMove,
+  onRemove,
+}: {
+  title: string;
+  keyName: string;
+  valueName: string;
+  row: KvRow;
+  index: number;
+  total: number;
+  onChange: (row: KvRow) => void;
+  onMove: (direction: -1 | 1) => void;
+  onRemove: () => void;
+}) {
+  const picker = useRef<HTMLInputElement>(null);
+  const latest = useRef(row);
+  const request = useRef(0);
+  latest.current = row;
+  const [error, setError] = useState("");
+
+  async function attach(file: File) {
+    const ticket = ++request.current;
+    try {
+      const image = await imageFileToDataUri(file);
+      if (ticket !== request.current) return;
+      onChange({ ...latest.current, image });
+      setError("");
+    } catch (caught) {
+      if (ticket !== request.current) return;
+      setError(caught instanceof Error ? caught.message : "Couldn’t read that image.");
+    }
+  }
+
+  function clearImage() {
+    request.current += 1;
+    onChange({ ...latest.current, image: "" });
+    setError("");
+  }
+
+  function pasteImage(event: ClipboardEvent<HTMLDivElement>) {
+    const file = imageFileFromClipboard(event.clipboardData);
+    if (!file) return;
+    event.preventDefault();
+    void attach(file);
+  }
+
+  return (
+    <div className="editor-row interests" onPaste={pasteImage}>
+      <label className="field">
+        <span>{keyName}</span>
+        <input
+          value={row.label}
+          aria-label={`${title} ${keyName} ${index + 1}`}
+          onChange={(event) => onChange({ ...row, label: event.target.value })}
+        />
+      </label>
+      <label className="field">
+        <span>{valueName}</span>
+        <input
+          value={row.value}
+          aria-label={`${title} ${valueName} ${index + 1}`}
+          onChange={(event) => onChange({ ...row, value: event.target.value })}
+        />
+      </label>
+      <div className="field image-field">
+        <span>Image</span>
+        <div className="image-line">
+          {row.image ? <InterestImage src={row.image} /> : <span className="interest-shot empty" aria-hidden="true" />}
+          <button type="button" className="btn tonal compact" onClick={() => picker.current?.click()}>
+            Choose image
+          </button>
+          {row.image ? (
+            <button type="button" className="btn compact" onClick={clearImage}>
+              Clear
+            </button>
+          ) : null}
+          <input
+            ref={picker}
+            className="sr"
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            aria-label={`${title} image ${index + 1}`}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) void attach(file);
+            }}
+          />
+        </div>
+        <small>Paste a picture here, or choose a file. Transparent pictures stay transparent.</small>
+        {error ? <small className="field-error">{error}</small> : null}
+      </div>
+      <div className="row-actions">
+        <button type="button" className="icon-btn" aria-label="Move up" disabled={index === 0} onClick={() => onMove(-1)}>
+          ↑
+        </button>
+        <button type="button" className="icon-btn" aria-label="Move down" disabled={index === total - 1} onClick={() => onMove(1)}>
+          ↓
+        </button>
+        <button type="button" className="icon-btn danger" aria-label="Remove" onClick={onRemove}>
+          ✕
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -533,6 +627,157 @@ function LinkEditor({ links, onChange }: { links: SiteLink[]; onChange: (links: 
             </div>
           </div>
         ))}
+      </div>
+    </section>
+  );
+}
+
+const MEDIA_KIND_LABEL: Record<MediaKind, string> = {
+  movie: "Movie",
+  tv: "Show",
+  anime: "Anime",
+  game: "Game",
+};
+
+interface TmdbChoice {
+  tmdbId: number;
+  kind: MediaKind;
+  name: string;
+  year: string;
+  overview: string;
+  poster: string;
+  backdrop: string;
+}
+
+function MediaEditor({ picks, onChange }: { picks: MediaPick[]; onChange: (picks: MediaPick[]) => void }) {
+  const [query, setQuery] = useState("");
+  const [kind, setKind] = useState<MediaKind>("anime");
+  const [results, setResults] = useState<TmdbChoice[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [note, setNote] = useState("");
+
+  async function search(event: FormEvent) {
+    event.preventDefault();
+    const password = readAdminPassword();
+    if (!password) {
+      setNote("Unlock the dashboard before searching.");
+      return;
+    }
+    setSearching(true);
+    setNote("");
+    try {
+      const data = await api<{ results: TmdbChoice[] }>(`/api/media?q=${encodeURIComponent(query.trim())}&kind=${kind}`, { password });
+      setResults(data.results);
+      if (data.results.length === 0) setNote("Nothing matched that search.");
+    } catch (error) {
+      setResults([]);
+      setNote(error instanceof Error ? error.message : "Could not search.");
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  function choose(choice: TmdbChoice) {
+    if (picks.some((pick) => pick.tmdbId === choice.tmdbId && pick.kind === choice.kind)) {
+      setNote(`${choice.name} is already on the shelf.`);
+      return;
+    }
+    onChange([
+      ...picks,
+      {
+        id: newId("media"),
+        tmdbId: choice.tmdbId,
+        kind: choice.kind,
+        name: choice.name,
+        year: choice.year,
+        overview: choice.overview,
+        poster: choice.poster,
+        backdrop: choice.backdrop,
+      },
+    ]);
+    setNote("");
+  }
+
+  return (
+    <section className="card">
+      <div className="section-head">
+        <div>
+          <h2>Media</h2>
+          <p className="muted">Search TMDB for shows and movies, or SteamGridDB for games. The shelf keeps the artwork and doesn’t look it up again.</p>
+        </div>
+      </div>
+      <form className="media-search" onSubmit={(event) => void search(event)}>
+        <label className="field">
+          <span>Search</span>
+          <input value={query} aria-label="Search media" onChange={(event) => setQuery(event.target.value)} />
+        </label>
+        <label className="field media-kind">
+          <span>Kind</span>
+          <select value={kind} aria-label="Search kind" onChange={(event) => setKind(event.target.value as MediaKind)}>
+            {MEDIA_KINDS.map((option) => (
+              <option key={option} value={option}>
+                {MEDIA_KIND_LABEL[option]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="submit" className="btn tonal" disabled={searching || query.trim().length < 2}>
+          {searching ? "Searching" : "Search"}
+        </button>
+      </form>
+      {note ? <p className="muted media-note">{note}</p> : null}
+      {results.length > 0 ? (
+        <div className="media-hits">
+          {results.map((choice) => {
+            const thumb = mediaArt(choice.poster, "w185");
+            return (
+              <button key={`${choice.kind}-${choice.tmdbId}`} type="button" className="media-hit" onClick={() => choose(choice)}>
+                {thumb ? <img className="media-thumb" src={thumb} alt="" /> : <span className="media-thumb monogram">{choice.name.slice(0, 1)}</span>}
+                <span>
+                  <strong>{choice.name}</strong>
+                  <small>
+                    {MEDIA_KIND_LABEL[choice.kind]}
+                    {choice.year ? ` · ${choice.year}` : ""}
+                  </small>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+      <div className="editor-list media-picks">
+        {picks.map((pick, index) => {
+          const thumb = mediaArt(pick.poster, "w185");
+          return (
+            <div key={pick.id} className="media-pick">
+              {thumb ? <img className="media-thumb" src={thumb} alt="" /> : <span className="media-thumb monogram">{pick.name.slice(0, 1)}</span>}
+              <div className="media-pick-copy">
+                <strong>{pick.name}</strong>
+                <small>
+                  {MEDIA_KIND_LABEL[pick.kind]}
+                  {pick.year ? ` · ${pick.year}` : ""}
+                </small>
+              </div>
+              <div className="row-actions">
+                <button type="button" className="icon-btn" aria-label="Move up" disabled={index === 0} onClick={() => onChange(moveItem(picks, index, -1))}>
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="Move down"
+                  disabled={index === picks.length - 1}
+                  onClick={() => onChange(moveItem(picks, index, 1))}
+                >
+                  ↓
+                </button>
+                <button type="button" className="icon-btn danger" aria-label={`Remove ${pick.name}`} onClick={() => onChange(picks.filter((item) => item.id !== pick.id))}>
+                  ✕
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

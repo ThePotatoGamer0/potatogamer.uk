@@ -5,6 +5,7 @@ import { GuestbookCard } from "../components/cards/GuestbookCard";
 import { KvCard } from "../components/cards/KvCard";
 import { SetupCard } from "../components/cards/SetupCard";
 import { LinksCard } from "../components/cards/LinksCard";
+import { MediaCard } from "../components/cards/MediaCard";
 import { ProfileCard } from "../components/cards/ProfileCard";
 import { CardBoundary } from "../components/Toast";
 import { useConfig } from "../context/AppProviders";
@@ -57,6 +58,11 @@ export function HomePage() {
             empty="No interests yet."
             highlightId={highlightId}
           />
+        </CardBoundary>
+      </div>
+      <div className="span-12">
+        <CardBoundary title="Media">
+          <MediaCard />
         </CardBoundary>
       </div>
       <div className="span-6">
