@@ -318,6 +318,24 @@ h2 {
   line-height: 1.3;
 }
 
+.profile-card {
+  display: flex;
+  flex-direction: column;
+}
+.profile-card > .kicker,
+.profile-card > .profile-head,
+.profile-card > .chips { flex: none; }
+.profile-card .quote {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  text-align: center;
+}
+.profile-card .quote.roomy span { font-size: clamp(1.9rem, 3.5vw, 2.65rem); }
+.profile-card .chips { margin-top: 16px; }
+
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 
 .chip, .btn, .status-pill {
@@ -516,8 +534,54 @@ h2 {
 .time { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--md-sys-color-on-surface-variant); }
 .elapsed { margin-top: 6px; font-size: 0.85rem; }
 
-.friend-list { max-height: 460px; overflow: auto; }
-.friend { align-items: center; padding: 8px; border-radius: 20px; background: var(--md-sys-color-surface-container); }
+.friends-slot { position: relative; min-height: 0; }
+.card.friends {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.friend-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--md-sys-color-on-surface) 32%, transparent) transparent;
+}
+@media (min-width: 981px) {
+  .card.friends { position: absolute; inset: 0; height: auto; }
+}
+@media (max-width: 980px) {
+  .card.friends { max-height: 320px; }
+}
+.friend {
+  position: relative;
+  align-items: center;
+  padding: 8px;
+  border-radius: 20px;
+  background: var(--md-sys-color-surface-container);
+  overflow: hidden;
+}
+.friend > :not(.nameplate) { position: relative; z-index: 1; }
+.nameplate {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 0;
+  width: min(72%, 320px);
+  height: 100%;
+  object-fit: cover;
+  object-position: right bottom;
+  pointer-events: none;
+  /* The video paints transparency as black, so fade that edge out. */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 58%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 58%);
+}
+.nameplate.still { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .nameplate.motion { display: none; }
+  .nameplate.still { display: block; }
+}
 .friend-copy { flex: 1; min-width: 0; }
 .friend-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .friend-name em { font-style: normal; color: var(--md-sys-color-on-surface-variant); font-size: 0.85rem; }
@@ -579,7 +643,7 @@ h2 {
 }
 
 .kv { display: flex; flex-direction: column; }
-#interests, #setup, .kv-row { scroll-margin-top: 96px; }
+#interests, #setup, #homelab, .kv-row { scroll-margin-top: 96px; }
 
 .kv-row {
   display: grid;

@@ -10,11 +10,21 @@ const SPEC_LUCIDE: Record<SpecIcon, LucideIcon> = {
   "circuit-board": CircuitBoard,
 };
 
-export function SetupCard({ rows }: { rows: SpecRow[] }) {
+export function SetupCard({
+  id,
+  kicker,
+  title,
+  rows,
+}: {
+  id: string;
+  kicker: string;
+  title: string;
+  rows: SpecRow[];
+}) {
   return (
-    <section className="card" id="setup">
-      <p className="kicker">PC setup</p>
-      <h2>The machines</h2>
+    <section className="card" id={id}>
+      <p className="kicker">{kicker}</p>
+      <h2>{title}</h2>
       {rows.length === 0 ? (
         <QuietState>No specs yet.</QuietState>
       ) : (

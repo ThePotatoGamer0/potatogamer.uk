@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import { OWNER_DISCORD_ID, type KvRow } from "../../../shared/site";
 import { useDiscordProfiles, usePresence } from "../../context/AppProviders";
 import { displayName, kvString } from "../../lib/discord";
@@ -20,6 +21,21 @@ export function ProfileCard({
   const name = displayName(user);
   const quote = withSpeechMarks(kvString(owner?.kv, "quote") || quoteFallback);
   const status = owner?.discord_status ?? "offline";
+  const quoteRef = useRef<HTMLQuoteElement>(null);
+  const [roomy, setRoomy] = useState(false);
+
+  useLayoutEffect(() => {
+    const node = quoteRef.current;
+    if (!node) return;
+    const update = () => {
+      const next = node.clientHeight > 120;
+      setRoomy((current) => (current === next ? current : next));
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <section className="card profile-card">
@@ -41,7 +57,9 @@ export function ProfileCard({
           </p>
         </div>
       </div>
-      <blockquote className="quote">{quote}</blockquote>
+      <blockquote ref={quoteRef} className={roomy ? "quote roomy" : "quote"}>
+        <span>{quote}</span>
+      </blockquote>
       {interests.length > 0 ? (
         <div className="chips" aria-label="Interests">
           {interests.map((interest) =>

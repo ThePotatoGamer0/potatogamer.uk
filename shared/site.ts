@@ -45,6 +45,7 @@ export interface SiteConfig {
   quote: string;
   interests: KvRow[];
   setup: SpecRow[];
+  homelab: SpecRow[];
   links: SiteLink[];
   friends: FriendConfig[];
   color: SiteColor;
@@ -96,6 +97,12 @@ export const defaultConfig: SiteConfig = {
     { id: "setup-storage-cachy", label: "Storage", value: "2 TB NVMe", detail: "CachyOS", icon: "hard-drive" },
     { id: "setup-storage-windows", label: "Storage", value: "512 GB NVMe", detail: "Windows", icon: "hard-drive" },
     { id: "setup-board", label: "Motherboard", value: "A620M Pro RS WiFi", detail: "", icon: "circuit-board" },
+  ],
+  homelab: [
+    { id: "homelab-apu", label: "APU", value: "BCM2712", detail: "Cortex-A76", icon: "cpu" },
+    { id: "homelab-gpu", label: "GPU", value: "VideoCore VII", detail: "", icon: "gpu" },
+    { id: "homelab-memory", label: "Memory", value: "16GB", detail: "", icon: "memory-stick" },
+    { id: "homelab-storage", label: "Storage", value: "1 TB NVMe", detail: "Raspberry Pi OS Lite", icon: "hard-drive" },
   ],
   links: [
     {
@@ -169,6 +176,9 @@ const LEGACY_SETUPS = new Set([
     "Storage|512 GB NVMe",
     "Motherboard|A620M Pro RS WiFi",
   ].join("||"),
+  ["Board|Raspberry Pi 5", "Memory|16GB", "Storage|1 TB NVMe"].join("||"),
+  ["APU|BCM2712", "Board|Raspberry Pi 5", "Memory|16GB", "Storage|1 TB NVMe"].join("||"),
+  ["APU|BCM2712", "GPU|VideoCore VII", "Board|Raspberry Pi 5", "Memory|16GB", "Storage|1 TB NVMe"].join("||"),
 ]);
 
 const SPEC_ICON_ALIASES: Record<string, SpecIcon> = {
@@ -198,8 +208,8 @@ function normalizeSpecIcon(value: unknown, label: string): SpecIcon {
   return specIconFor(label);
 }
 
-function takeSpecs(value: unknown, limit: number): SpecRow[] {
-  if (!Array.isArray(value)) return defaultConfig.setup;
+function takeSpecs(value: unknown, limit: number, fallback: SpecRow[], replaceLegacy = false): SpecRow[] {
+  if (!Array.isArray(value)) return fallback;
   const rows: SpecRow[] = [];
   for (const item of value) {
     if (!item || typeof item !== "object") continue;
@@ -217,7 +227,7 @@ function takeSpecs(value: unknown, limit: number): SpecRow[] {
     if (rows.length >= limit) break;
   }
   const signature = rows.map((row) => `${row.label}|${row.value}`).join("||");
-  return LEGACY_SETUPS.has(signature) ? defaultConfig.setup : rows;
+  return replaceLegacy && LEGACY_SETUPS.has(signature) ? fallback : rows;
 }
 
 function takeRows(value: unknown, limit: number): KvRow[] {
@@ -256,7 +266,8 @@ export function normalizeConfig(input: unknown, mode: "read" | "write"): ConfigR
     config: {
       quote: source.quote === undefined ? defaultConfig.quote : cleanText(source.quote, 280),
       interests: Array.isArray(source.interests) ? takeRows(source.interests, 24) : defaultConfig.interests,
-      setup: Array.isArray(source.setup) ? takeSpecs(source.setup, 24) : defaultConfig.setup,
+      setup: takeSpecs(source.setup, 24, defaultConfig.setup, true),
+      homelab: takeSpecs(source.homelab, 24, defaultConfig.homelab, true),
       links: links.items,
       friends: friends.items,
       color: normalizeColor(source.color),

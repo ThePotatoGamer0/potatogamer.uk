@@ -232,7 +232,22 @@ export function AdminPage() {
             rows={draft.interests}
             onChange={(interests) => setDraft({ ...draft, interests })}
           />
-          <SpecEditor rows={draft.setup} onChange={(setup) => setDraft({ ...draft, setup })} />
+          <SpecEditor
+            title="PC setup"
+            description="One device per row. Subtext sits under the spec, such as which OS is on a drive."
+            name="PC setup"
+            idPrefix="setup"
+            rows={draft.setup}
+            onChange={(setup) => setDraft({ ...draft, setup })}
+          />
+          <SpecEditor
+            title="Homelab"
+            description="Same layout as the PC card. Subtext sits under the spec, such as the OS on a drive."
+            name="Homelab"
+            idPrefix="homelab"
+            rows={draft.homelab}
+            onChange={(homelab) => setDraft({ ...draft, homelab })}
+          />
           <LinkEditor links={draft.links} onChange={(links) => setDraft({ ...draft, links })} />
           <FriendEditor friends={draft.friends} onChange={(friends) => setDraft({ ...draft, friends })} />
 
@@ -358,18 +373,32 @@ function PairEditor({
   );
 }
 
-function SpecEditor({ rows, onChange }: { rows: SpecRow[]; onChange: (rows: SpecRow[]) => void }) {
+function SpecEditor({
+  title,
+  description,
+  name,
+  idPrefix,
+  rows,
+  onChange,
+}: {
+  title: string;
+  description: string;
+  name: string;
+  idPrefix: string;
+  rows: SpecRow[];
+  onChange: (rows: SpecRow[]) => void;
+}) {
   return (
     <section className="card">
       <div className="section-head">
         <div>
-          <h2>PC setup</h2>
-          <p className="muted">One device per row. Subtext sits under the spec, such as which OS is on a drive.</p>
+          <h2>{title}</h2>
+          <p className="muted">{description}</p>
         </div>
         <button
           type="button"
           className="btn tonal"
-          onClick={() => onChange([...rows, { id: newId("setup"), label: "", value: "", detail: "", icon: "cpu" }])}
+          onClick={() => onChange([...rows, { id: newId(idPrefix), label: "", value: "", detail: "", icon: "cpu" }])}
         >
           Add
         </button>
@@ -381,7 +410,7 @@ function SpecEditor({ rows, onChange }: { rows: SpecRow[]; onChange: (rows: Spec
               <span>Icon</span>
               <select
                 value={row.icon}
-                aria-label={`PC setup icon ${index + 1}`}
+                aria-label={`${name} icon ${index + 1}`}
                 onChange={(event) => onChange(updateRow(rows, index, { ...row, icon: event.target.value as SpecIcon }))}
               >
                 {SPEC_ICONS.map((icon) => (
@@ -395,7 +424,7 @@ function SpecEditor({ rows, onChange }: { rows: SpecRow[]; onChange: (rows: Spec
               <span>Part</span>
               <input
                 value={row.label}
-                aria-label={`PC setup part ${index + 1}`}
+                aria-label={`${name} part ${index + 1}`}
                 onChange={(event) => onChange(updateRow(rows, index, { ...row, label: event.target.value }))}
               />
             </label>
@@ -403,7 +432,7 @@ function SpecEditor({ rows, onChange }: { rows: SpecRow[]; onChange: (rows: Spec
               <span>Spec</span>
               <input
                 value={row.value}
-                aria-label={`PC setup spec ${index + 1}`}
+                aria-label={`${name} spec ${index + 1}`}
                 onChange={(event) => onChange(updateRow(rows, index, { ...row, value: event.target.value }))}
               />
             </label>
@@ -411,7 +440,7 @@ function SpecEditor({ rows, onChange }: { rows: SpecRow[]; onChange: (rows: Spec
               <span>Subtext</span>
               <input
                 value={row.detail}
-                aria-label={`PC setup subtext ${index + 1}`}
+                aria-label={`${name} subtext ${index + 1}`}
                 onChange={(event) => onChange(updateRow(rows, index, { ...row, detail: event.target.value }))}
               />
             </label>

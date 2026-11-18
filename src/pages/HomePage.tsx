@@ -42,12 +42,12 @@ export function HomePage() {
           <LinksCard links={config.links} />
         </CardBoundary>
       </div>
-      <div className="span-8">
+      <div className="span-8 friends-slot">
         <CardBoundary title="Friends">
           <FriendsCard friends={config.friends} />
         </CardBoundary>
       </div>
-      <div className="span-6">
+      <div className="span-12">
         <CardBoundary title="Interests">
           <KvCard
             id="interests"
@@ -61,7 +61,12 @@ export function HomePage() {
       </div>
       <div className="span-6">
         <CardBoundary title="PC setup">
-          <SetupCard rows={config.setup} />
+          <SetupCard id="setup" kicker="PC setup" title="My Machine" rows={config.setup} />
+        </CardBoundary>
+      </div>
+      <div className="span-6">
+        <CardBoundary title="Homelab">
+          <SetupCard id="homelab" kicker="Homelab" title="Raspberry Pi 5" rows={config.homelab} />
         </CardBoundary>
       </div>
       <div className="span-12">

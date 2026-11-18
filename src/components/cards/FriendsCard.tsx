@@ -3,7 +3,7 @@ import { safeHttpUrl } from "../../../shared/site";
 import { useDiscordProfiles, usePresence } from "../../context/AppProviders";
 import { Avatar } from "../Avatar";
 import { QuietState } from "../QuietState";
-import { displayName, kvString } from "../../lib/discord";
+import { displayName, kvString, nameplateUrls } from "../../lib/discord";
 import { withSpeechMarks } from "../../lib/format";
 import { STATUS_LABEL, type DiscordStatus } from "../../lib/lanyard";
 
@@ -12,7 +12,7 @@ export function FriendsCard({ friends }: { friends: FriendConfig[] }) {
   const { users: profiles } = useDiscordProfiles();
 
   return (
-    <section className="card">
+    <section className="card friends">
       <p className="kicker">Friends</p>
       <h2>People</h2>
       {friends.length === 0 ? (
@@ -26,8 +26,10 @@ export function FriendsCard({ friends }: { friends: FriendConfig[] }) {
             const href = safeHttpUrl(kvString(presence?.kv, "url"));
             const status: DiscordStatus = presence?.discord_status ?? "offline";
             const missing = ready && presence === null;
+            const nameplate = nameplateUrls(user?.collectibles?.nameplate?.asset);
             return (
-              <li key={friend.id} className="friend">
+              <li key={friend.id} className={nameplate ? "friend has-nameplate" : "friend"}>
+                {nameplate ? <Nameplate video={nameplate.video} still={nameplate.still} /> : null}
                 {user ? (
                   <Avatar user={user} status={status} size="sm" />
                 ) : (
@@ -56,5 +58,14 @@ export function FriendsCard({ friends }: { friends: FriendConfig[] }) {
         </ul>
       )}
     </section>
+  );
+}
+
+function Nameplate({ video, still }: { video: string; still: string }) {
+  return (
+    <>
+      <img className="nameplate still" src={still} alt="" />
+      <video className="nameplate motion" src={video} poster={still} autoPlay muted loop playsInline aria-hidden="true" />
+    </>
   );
 }

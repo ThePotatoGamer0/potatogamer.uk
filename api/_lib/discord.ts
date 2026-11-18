@@ -11,6 +11,7 @@ export interface PublicDiscordUser {
   global_name: string | null;
   avatar: string | null;
   avatar_decoration_data?: { asset: string } | null;
+  collectibles?: { nameplate?: { asset: string; label?: string; palette?: string } | null } | null;
 }
 
 interface CacheEntry {
@@ -90,5 +91,23 @@ function publicUser(value: unknown): PublicDiscordUser | null {
     global_name: typeof record.global_name === "string" ? record.global_name : null,
     avatar: typeof record.avatar === "string" ? record.avatar : null,
     avatar_decoration_data: asset ? { asset } : null,
+    collectibles: publicNameplate(record.collectibles),
+  };
+}
+
+function publicNameplate(value: unknown): PublicDiscordUser["collectibles"] {
+  if (!value || typeof value !== "object") return null;
+  const nameplate = (value as { nameplate?: unknown }).nameplate;
+  if (!nameplate || typeof nameplate !== "object") return null;
+  const asset = (nameplate as { asset?: unknown }).asset;
+  if (typeof asset !== "string" || !/^nameplates\/(?:[a-z0-9_-]+\/)+$/i.test(asset)) return null;
+  const label = (nameplate as { label?: unknown }).label;
+  const palette = (nameplate as { palette?: unknown }).palette;
+  return {
+    nameplate: {
+      asset,
+      label: typeof label === "string" ? label : undefined,
+      palette: typeof palette === "string" ? palette : undefined,
+    },
   };
 }

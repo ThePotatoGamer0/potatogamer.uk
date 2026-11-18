@@ -20,6 +20,14 @@ export function decorationUrl(asset: string): string {
   return `https://cdn.discordapp.com/avatar-decoration-presets/${asset}.png?size=240`;
 }
 
+const NAMEPLATE_ASSET = /^nameplates\/(?:[a-z0-9_-]+\/)+$/i;
+
+export function nameplateUrls(asset: string | undefined): { video: string; still: string } | null {
+  if (!asset || !NAMEPLATE_ASSET.test(asset)) return null;
+  const base = `https://cdn.discordapp.com/assets/collectibles/${asset}`;
+  return { video: `${base}asset.webm`, still: `${base}static.png` };
+}
+
 export function emojiUrl(emoji: { id?: string | null; animated?: boolean } | null | undefined): string | null {
   if (!emoji?.id) return null;
   const extension = emoji.animated ? "gif" : "webp";

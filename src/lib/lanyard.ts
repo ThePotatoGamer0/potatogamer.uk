@@ -1,3 +1,9 @@
+export interface DiscordNameplate {
+  asset: string;
+  label?: string;
+  palette?: string;
+}
+
 export interface DiscordUser {
   id: string;
   username: string;
@@ -5,6 +11,7 @@ export interface DiscordUser {
   display_name?: string | null;
   avatar: string | null;
   avatar_decoration_data?: { asset: string } | null;
+  collectibles?: { nameplate?: DiscordNameplate | null } | null;
 }
 
 export interface LanyardEmoji {
