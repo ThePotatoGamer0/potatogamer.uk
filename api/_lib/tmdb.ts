@@ -14,7 +14,7 @@ export interface TmdbChoice {
 
 export async function searchTitles(query: string, kind: TitleKind): Promise<TmdbChoice[] | { error: string; status: number }> {
   const key = process.env.TMDB_API_KEY?.trim() ?? "";
-  if (!key) return { error: "TMDB isn’t configured on the server.", status: 503 };
+  if (!key) return { error: "Show and movie search isn’t set up.", status: 503 };
 
   const endpoints = kind === "anime" ? (["tv", "movie"] as const) : kind === "movie" ? (["movie"] as const) : (["tv"] as const);
   const batches = await Promise.all(endpoints.map((endpoint) => searchEndpoint(endpoint, query, key)));
@@ -50,12 +50,12 @@ async function searchEndpoint(endpoint: "movie" | "tv", query: string, key: stri
     });
   } catch {
     console.error("[tmdb] search failed", endpoint);
-    return { error: "TMDB could not be reached.", status: 502 };
+    return { error: "Couldn’t reach the search.", status: 502 };
   }
 
   if (!response.ok) {
     console.error("[tmdb] search rejected", response.status, endpoint);
-    return { error: "TMDB rejected the search.", status: 502 };
+    return { error: "The search was rejected.", status: 502 };
   }
 
   const body = (await response.json().catch(() => null)) as { results?: TmdbHit[] } | null;

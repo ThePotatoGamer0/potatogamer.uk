@@ -78,7 +78,7 @@ export function AdminPage() {
       setConfig(data.config);
       setUnlocked(true);
       setPassword("");
-      show("ok", "Dashboard unlocked.");
+      show("ok", "Unlocked.");
     } catch (error) {
       show("err", error instanceof Error ? error.message : "Could not unlock.");
     } finally {
@@ -147,15 +147,15 @@ export function AdminPage() {
       <header className="admin-head">
         <p className="kicker">Owner</p>
         <h1>Site settings</h1>
-        <p className="lede">Edit the homepage from your phone. Nothing here is published until you save.</p>
+        <p className="lede">Nothing is published until you save.</p>
       </header>
 
-      {checking ? <section className="card"><p className="muted">Checking the saved session…</p></section> : null}
+      {checking ? <section className="card"><p className="muted">Checking…</p></section> : null}
 
       {!checking && !unlocked ? (
         <section className="card lock-card">
           <h2>Unlock</h2>
-          <p className="muted">Use the ADMIN_PASSWORD configured on the server.</p>
+          <p className="muted">Enter the password.</p>
           <form className="stack" onSubmit={unlock}>
             <label className="field">
               <span>Password</span>
@@ -177,12 +177,12 @@ export function AdminPage() {
       {!checking && unlocked && draft ? (
         <div className="admin-stack">
           {storage === "memory" ? (
-            <p className="banner">Upstash isn’t connected. Saves stay in this server process until it restarts.</p>
+            <p className="banner">Saves won’t last past a restart.</p>
           ) : null}
 
           <section className="card">
             <h2>Color</h2>
-            <p className="muted">Auto uses your live Discord avatar. Manual keeps a color you choose.</p>
+            <p className="muted">Auto follows your avatar.</p>
             <div className="theme-modes" role="group" aria-label="Color source">
               <button
                 type="button"
@@ -201,11 +201,11 @@ export function AdminPage() {
             </div>
             {draft.color.source === "manual" ? (
               <label className="field color-field">
-                <span>Seed color</span>
+                <span>Color</span>
                 <input
                   type="color"
                   value={draft.color.seed}
-                  aria-label="Seed color"
+                  aria-label="Color"
                   onChange={(event) => setDraft({ ...draft, color: { source: "manual", seed: event.target.value } })}
                 />
               </label>
@@ -214,7 +214,6 @@ export function AdminPage() {
 
           <section className="card">
             <h2>Fallback quote</h2>
-            <p className="muted">Shown when Lanyard has no kv.quote.</p>
             <label className="field">
               <span className="sr">Fallback quote</span>
               <textarea
@@ -228,7 +227,7 @@ export function AdminPage() {
 
           <PairEditor
             title="Interests"
-            description="Labels become the chips on the profile card. Add a picture with the file picker, or paste one onto the row."
+            description="Add a picture with the file picker, or paste one onto the row."
             keyName="Label"
             valueName="Value"
             rows={draft.interests}
@@ -236,7 +235,7 @@ export function AdminPage() {
           />
           <SpecEditor
             title="PC setup"
-            description="One device per row. Subtext sits under the spec, such as which OS is on a drive."
+            description=""
             name="PC setup"
             idPrefix="setup"
             rows={draft.setup}
@@ -244,7 +243,7 @@ export function AdminPage() {
           />
           <SpecEditor
             title="Homelab"
-            description="Same layout as the PC card. Subtext sits under the spec, such as the OS on a drive."
+            description=""
             name="Homelab"
             idPrefix="homelab"
             rows={draft.homelab}
@@ -256,7 +255,7 @@ export function AdminPage() {
 
           <section className="card">
             <h2>Guestbook</h2>
-            <p className="muted">Notes on the homepage. Deleting one removes it for everyone.</p>
+            <p className="muted">Deleting one removes it for everyone.</p>
             {entries.length === 0 ? (
               <QuietState>No notes yet.</QuietState>
             ) : (
@@ -327,7 +326,7 @@ function PairEditor({
       <div className="section-head">
         <div>
           <h2>{title}</h2>
-          <p className="muted">{description}</p>
+          {description ? <p className="muted">{description}</p> : null}
         </div>
         <button type="button" className="btn tonal" onClick={() => onChange([...rows, { id: newId("row"), label: "", value: "", image: "" }])}>
           Add
@@ -487,7 +486,7 @@ function SpecEditor({
       <div className="section-head">
         <div>
           <h2>{title}</h2>
-          <p className="muted">{description}</p>
+          {description ? <p className="muted">{description}</p> : null}
         </div>
         <button
           type="button"
@@ -568,7 +567,7 @@ function LinkEditor({ links, onChange }: { links: SiteLink[]; onChange: (links: 
       <div className="section-head">
         <div>
           <h2>Links</h2>
-          <p className="muted">Discord and GitHub are seeded. Add anything else here.</p>
+          <p className="muted">Add the places people can find you.</p>
         </div>
         <button
           type="button"
@@ -660,7 +659,7 @@ function MediaEditor({ picks, onChange }: { picks: MediaPick[]; onChange: (picks
     event.preventDefault();
     const password = readAdminPassword();
     if (!password) {
-      setNote("Unlock the dashboard before searching.");
+      setNote("Unlock before searching.");
       return;
     }
     setSearching(true);
@@ -679,7 +678,7 @@ function MediaEditor({ picks, onChange }: { picks: MediaPick[]; onChange: (picks
 
   function choose(choice: TmdbChoice) {
     if (picks.some((pick) => pick.tmdbId === choice.tmdbId && pick.kind === choice.kind)) {
-      setNote(`${choice.name} is already on the shelf.`);
+      setNote(`${choice.name} is already added.`);
       return;
     }
     onChange([
@@ -703,7 +702,7 @@ function MediaEditor({ picks, onChange }: { picks: MediaPick[]; onChange: (picks
       <div className="section-head">
         <div>
           <h2>Media</h2>
-          <p className="muted">Search TMDB for shows and movies, or SteamGridDB for games. The shelf keeps the artwork and doesn’t look it up again.</p>
+          <p className="muted">Search for a show, movie, anime, or game.</p>
         </div>
       </div>
       <form className="media-search" onSubmit={(event) => void search(event)}>
@@ -789,7 +788,7 @@ function FriendEditor({ friends, onChange }: { friends: FriendConfig[]; onChange
       <div className="section-head">
         <div>
           <h2>Friends</h2>
-          <p className="muted">Discord user IDs. Their Lanyard kv.quote and kv.url show up on the friends card.</p>
+          <p className="muted">Add people by their Discord ID.</p>
         </div>
         <button type="button" className="btn tonal" onClick={() => onChange([...friends, { id: newId("friend"), discordId: "", label: "" }])}>
           Add

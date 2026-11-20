@@ -29,7 +29,7 @@ export function ActivityCard() {
       ) : owner ? (
         <ActivityBody presence={owner} now={now} />
       ) : (
-        <QuietState>Lanyard isn’t responding right now.</QuietState>
+        <QuietState>Activity isn’t available right now.</QuietState>
       )}
     </section>
   );

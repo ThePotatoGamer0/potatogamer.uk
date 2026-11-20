@@ -28,7 +28,7 @@ const ENDPOINT = "https://www.steamgriddb.com/api/v2";
 
 export async function searchGames(query: string): Promise<GameChoice[] | { error: string; status: number }> {
   const key = process.env.STEAMGRIDDB_API_KEY?.trim() ?? "";
-  if (!key) return { error: "SteamGridDB isn’t configured on the server.", status: 503 };
+  if (!key) return { error: "Game search isn’t set up.", status: 503 };
 
   try {
     const found = await sgdb<SgGame[]>(`/search/autocomplete/${encodeURIComponent(query)}`, key);
@@ -37,7 +37,7 @@ export async function searchGames(query: string): Promise<GameChoice[] | { error
     return choices.filter((choice): choice is GameChoice => choice !== null);
   } catch (error) {
     if (isStatus(error)) return { error: error.message, status: error.status };
-    return { error: "Could not reach SteamGridDB.", status: 502 };
+    return { error: "Couldn’t reach game search.", status: 502 };
   }
 }
 
@@ -104,9 +104,9 @@ async function sgdb<T>(path: string, key: string): Promise<T | null> {
     },
   });
   if (response.status === 404) return null;
-  if (response.status === 401 || response.status === 403) throw new StatusError(503, "SteamGridDB rejected the key.");
-  if (response.status === 429) throw new StatusError(503, "SteamGridDB is rate limiting searches. Try again in a moment.");
-  if (!response.ok) throw new StatusError(502, "Could not search SteamGridDB.");
+  if (response.status === 401 || response.status === 403) throw new StatusError(503, "Game search isn’t set up.");
+  if (response.status === 429) throw new StatusError(503, "Too many searches. Try again in a moment.");
+  if (!response.ok) throw new StatusError(502, "Couldn’t search for games.");
   const body = (await response.json()) as { success?: unknown; data?: T };
   if (body.success !== true || body.data === undefined) return null;
   return body.data;

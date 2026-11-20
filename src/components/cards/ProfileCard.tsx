@@ -55,7 +55,7 @@ export function ProfileCard({
           <p className="handle">{user ? `@${user.username}` : "@thepotatogamer"}</p>
           <p className={`status-pill ${status}`}>
             <span className={`status-dot inline ${status}`} aria-hidden="true" />
-            {owner || bot || ready ? STATUS_LABEL[status] : "Checking Lanyard"}
+            {owner || bot || ready ? STATUS_LABEL[status] : "Checking"}
           </p>
         </div>
       </div>

@@ -9,7 +9,7 @@ import { displayName, kvString, nameplateUrls } from "../../lib/discord";
 import { withSpeechMarks } from "../../lib/format";
 import { STATUS_LABEL, type DiscordStatus } from "../../lib/lanyard";
 
-const UNKNOWN_ACTIVITY = "Not on lanyard, activity unknown";
+const UNKNOWN_ACTIVITY = "Offline";
 
 export function FriendsCard({ friends }: { friends: FriendConfig[] }) {
   const { users, ready } = usePresence();
@@ -20,7 +20,7 @@ export function FriendsCard({ friends }: { friends: FriendConfig[] }) {
       <p className="kicker">Friends</p>
       <h2>People</h2>
       {friends.length === 0 ? (
-        <QuietState>No friends added yet. Discord IDs can be saved from the admin dashboard.</QuietState>
+        <QuietState>No friends yet.</QuietState>
       ) : (
         <ul className="friend-list">
           {friends.map((friend) => {

@@ -42,7 +42,7 @@ export function HomePage({ focus }: { focus?: OgCard }) {
 
   return (
     <div className="bento">
-      {error ? <p className="banner span-12">Showing the built-in site defaults. {error}</p> : null}
+      {error ? <p className="banner span-12">Couldn’t load the latest version of the site.</p> : null}
       <div className="span-5">
         <CardBoundary title="Profile">
           <ProfileCard quoteFallback={config.quote} interests={config.interests} onInterest={setHighlightId} />

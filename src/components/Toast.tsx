@@ -54,7 +54,7 @@ export class CardBoundary extends Component<BoundaryProps, BoundaryState> {
       return (
         <section className="card">
           <h2>{this.props.title}</h2>
-          <QuietState>This card hit an error and was isolated.</QuietState>
+          <QuietState>This card hit an error.</QuietState>
         </section>
       );
     }

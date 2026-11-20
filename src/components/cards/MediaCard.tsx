@@ -37,7 +37,7 @@ export function MediaCard() {
       <p className="kicker">Media</p>
       <h2>On rotation</h2>
       {loading ? (
-        <QuietState>Loading the shelf.</QuietState>
+        <QuietState>Loading.</QuietState>
       ) : !current ? (
         <QuietState>No shows, anime, movies, or games featured yet.</QuietState>
       ) : (

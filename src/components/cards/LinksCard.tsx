@@ -8,7 +8,7 @@ export function LinksCard({ links }: { links: SiteLink[] }) {
       <p className="kicker">Links</p>
       <h2>Find me</h2>
       {links.length === 0 ? (
-        <QuietState>No links yet. Add some from the admin dashboard.</QuietState>
+        <QuietState>No links yet.</QuietState>
       ) : (
         <div className="link-list">
           {links.map((link) => (

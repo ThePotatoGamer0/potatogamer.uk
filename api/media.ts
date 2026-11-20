@@ -21,7 +21,7 @@ export async function GET(request: Request): Promise<Response> {
     return json({ results: found });
   } catch (error) {
     console.error("[api/media] GET failed", error);
-    return json({ error: kind === "game" ? "Could not search SteamGridDB." : "Could not search TMDB." }, 500);
+    return json({ error: kind === "game" ? "Couldn’t search for games." : "Couldn’t search for titles." }, 500);
   }
 }
 

@@ -55,7 +55,7 @@ export function authorized(request: Request): boolean {
 
 export function requireAuth(request: Request): Response | null {
   if (!passwordConfigured()) {
-    return json({ error: "ADMIN_PASSWORD is not configured on the server." }, 503);
+    return json({ error: "No password is set up." }, 503);
   }
   if (!authorized(request)) return json({ error: "Wrong password." }, 401);
   return null;

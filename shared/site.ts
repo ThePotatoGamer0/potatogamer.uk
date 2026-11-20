@@ -499,8 +499,8 @@ function normalizeMedia(
           ok: false,
           error:
             record.kind === "game"
-              ? "Each game has to be chosen from the SteamGridDB search."
-              : "Each featured title has to be chosen from the TMDB search.",
+              ? "Each game has to be chosen from the search."
+              : "Each title has to be chosen from the search.",
         };
       }
       continue;
@@ -509,7 +509,7 @@ function normalizeMedia(
     const poster = game ? remoteArt(record.poster) : mediaPath(record.poster);
     const backdrop = game ? remoteArt(record.backdrop) : mediaPath(record.backdrop);
     if (game && !poster) {
-      if (mode === "write") return { ok: false, error: "Each game has to be chosen from the SteamGridDB search." };
+      if (mode === "write") return { ok: false, error: "Each game has to be chosen from the search." };
       continue;
     }
     items.push({
