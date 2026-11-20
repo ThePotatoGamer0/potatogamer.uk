@@ -65,6 +65,7 @@ export async function buildOgDocument(request: Request): Promise<OgDocument> {
   const lede = clip(built.lede, 160);
   const title = clip(built.title, 80);
   const stamp = contentStamp([
+    "card-dark",
     title,
     description,
     heading,
@@ -104,7 +105,7 @@ async function compose(
   name: string,
 ): Promise<Pick<OgDocument, "title" | "kicker" | "heading" | "lede" | "lines" | "items" | "layout" | "picture" | "pictureKind">> {
   if (card === null || card === "profile") {
-    const chips = config.interests.slice(0, 6).map((row) => item(row.label, "", null));
+    const chips = config.interests.slice(0, 6).map((row) => item(row.label, "", previewImage(row.image)));
     const into = intoLine(config);
     const meta = card === "profile" ? OG_CARDS.profile : { kicker: "Profile", heading: name };
     return {

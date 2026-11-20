@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@jsquash/webp": "^1.5.0",
     "@material/material-color-utilities": "^0.3.0",
     "@resvg/resvg-wasm": "^2.6.2",
     "@upstash/redis": "^1.35.6",

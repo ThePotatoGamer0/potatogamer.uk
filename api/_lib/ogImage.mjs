@@ -1,24 +1,38 @@
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { deflateSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
-import { Hct, argbFromHex, hexFromArgb } from "@material/material-color-utilities";
+import { DynamicScheme, Hct, TonalPalette, argbFromHex, hexFromArgb } from "@material/material-color-utilities";
+import decodeWebp, { init as initWebp } from "@jsquash/webp/decode.js";
 import React from "react";
 import satori from "satori";
 import { initWasm, Resvg } from "@resvg/resvg-wasm";
 
 const require = createRequire(import.meta.url);
 const wasmPath = require.resolve("@resvg/resvg-wasm/index_bg.wasm");
+const webpPath = require.resolve("@jsquash/webp/codec/dec/webp_dec.wasm");
 const fontPath = fileURLToPath(new URL("./Geist-Regular.ttf", import.meta.url));
+
+const WIDTH = 1200;
+const HEIGHT = 630;
+const MARGIN = 28;
+const CARD_PAD = 28;
+const FRAME = WIDTH - MARGIN * 2;
+const INNER = FRAME - CARD_PAD * 2 - 2;
+const GAP = 14;
+const TILE = Math.floor((INNER - GAP) / 2);
 
 let wasmReady;
 let fontReady;
+let webpReady;
 
 export async function renderOgImage(doc) {
+  const painted = await withRasterImages(doc);
   try {
-    return await rasterize(doc, true);
+    return await rasterize(painted, true);
   } catch (error) {
     console.error("[api/og] picture skipped", error instanceof Error ? error.message : "error");
-    return rasterize(doc, false);
+    return rasterize(painted, false);
   }
 }
 
@@ -26,11 +40,11 @@ async function rasterize(doc, picture) {
   await ensureWasm();
   const font = await loadFont();
   const svg = await satori(cardImage(doc, picture), {
-    width: 1200,
-    height: 630,
+    width: WIDTH,
+    height: HEIGHT,
     fonts: [{ name: "Geist", data: font, weight: 400, style: "normal" }],
   });
-  const rendered = new Resvg(svg, { fitTo: { mode: "width", value: 1200 } }).render();
+  const rendered = new Resvg(svg).render();
   const png = Buffer.from(rendered.asPng());
   rendered.free();
   return png;
@@ -49,6 +63,39 @@ function loadFont() {
   return fontReady;
 }
 
+function ensureWebp() {
+  webpReady ??= readFile(webpPath)
+    .then((wasm) => initWebp({ wasmBinary: wasm }))
+    .catch((error) => {
+      webpReady = undefined;
+      throw error;
+    });
+  return webpReady;
+}
+
+async function withRasterImages(doc) {
+  const [picture, items] = await Promise.all([
+    rasterSource(doc.picture),
+    Promise.all((Array.isArray(doc.items) ? doc.items : []).map(async (item) => ({ ...item, image: await rasterSource(item?.image) }))),
+  ]);
+  return { ...doc, picture, items };
+}
+
+async function rasterSource(source) {
+  if (typeof source !== "string" || !source.startsWith("data:image/webp")) return source || null;
+  try {
+    await ensureWebp();
+    const encoded = source.slice(source.indexOf(",") + 1);
+    const bytes = Buffer.from(encoded, "base64");
+    const image = await decodeWebp(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+    const png = encodePng(image.width, image.height, image.data);
+    return `data:image/png;base64,${png.toString("base64")}`;
+  } catch (error) {
+    console.error("[api/og] webp skipped", error instanceof Error ? error.message : "error");
+    return null;
+  }
+}
+
 function cardImage(doc, picture) {
   const colors = palette(doc.accent || "#f5d8da");
   const items = (Array.isArray(doc.items) ? doc.items : []).map((item) => ({
@@ -62,16 +109,16 @@ function cardImage(doc, picture) {
   return h(
     "div",
     {
-        style: {
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          background: colors.background,
-          padding: 36,
-          fontFamily: "Geist",
-          color: colors.ink,
-        },
+      style: {
+        width: WIDTH,
+        height: HEIGHT,
+        display: "flex",
+        background: colors.background,
+        padding: MARGIN,
+        overflow: "hidden",
+        fontFamily: "Geist",
+        color: colors.ink,
+      },
     },
     h(
       "div",
@@ -79,15 +126,18 @@ function cardImage(doc, picture) {
         style: {
           display: "flex",
           flexDirection: "column",
-          width: "100%",
+          width: FRAME,
+          height: HEIGHT - MARGIN * 2,
+          boxSizing: "border-box",
           background: colors.card,
-          borderRadius: 32,
-          padding: "36px 40px",
+          borderRadius: 28,
+          padding: CARD_PAD,
+          overflow: "hidden",
           border: `1px solid ${colors.line}`,
         },
       },
       header(doc, colors, showAvatar),
-      doc.lede ? text(plain(doc.lede), { fontSize: 32, lineHeight: 1.25, marginTop: 22, color: colors.ink }) : null,
+      doc.lede ? text(plain(doc.lede), { width: INNER, fontSize: 28, lineHeight: 1.25, marginTop: 16, color: colors.ink }) : null,
       body(doc.layout, items, colors, showPoster ? doc.picture : null),
     ),
   );
@@ -95,21 +145,18 @@ function cardImage(doc, picture) {
 
 function header(doc, colors, showAvatar) {
   const handle = doc.layout === "profile" ? plain(doc.lines?.[0]) : "";
+  const titleWidth = showAvatar ? INNER - 136 : INNER;
   const title = h(
     "div",
-    { style: { display: "flex", flexDirection: "column" } },
-    text(plain(doc.kicker).toUpperCase(), {
-      fontSize: 18,
-      letterSpacing: 2,
-      color: colors.muted,
-    }),
-    text(plain(doc.heading), { fontSize: 56, lineHeight: 1.05, marginTop: 8 }),
-    handle.startsWith("@") ? text(handle, { fontSize: 24, marginTop: 6, color: colors.muted }) : null,
+    { style: { display: "flex", flexDirection: "column", width: titleWidth } },
+    text(plain(doc.kicker).toUpperCase(), { fontSize: 18, letterSpacing: 2, color: colors.muted }),
+    text(plain(doc.heading), { width: titleWidth, fontSize: 48, lineHeight: 1.05, marginTop: 8 }),
+    handle.startsWith("@") ? text(handle, { fontSize: 22, marginTop: 6, color: colors.muted }) : null,
   );
   if (!showAvatar) return title;
   return h(
     "div",
-    { style: { display: "flex", alignItems: "center" } },
+    { style: { display: "flex", alignItems: "center", width: INNER } },
     h("img", {
       src: doc.picture,
       width: 112,
@@ -132,7 +179,7 @@ function chips(items, colors) {
   if (shown.length === 0) return null;
   return h(
     "div",
-    { style: { display: "flex", flexWrap: "wrap", marginTop: 28 } },
+    { style: { display: "flex", flexWrap: "wrap", width: INNER, marginTop: 22 } },
     ...shown.map((item) =>
       h(
         "div",
@@ -142,10 +189,10 @@ function chips(items, colors) {
             alignItems: "center",
             background: colors.tile,
             borderRadius: 999,
-            padding: "12px 18px",
+            padding: "10px 16px",
             marginRight: 12,
             marginBottom: 12,
-            fontSize: 24,
+            fontSize: 22,
           },
         },
         item.image
@@ -165,7 +212,7 @@ function chips(items, colors) {
 function rows(items, colors) {
   return h(
     "div",
-    { style: { display: "flex", flexDirection: "column", marginTop: 28 } },
+    { style: { display: "flex", flexDirection: "column", width: INNER, marginTop: 22 } },
     ...items.slice(0, 5).map((item) =>
       h(
         "div",
@@ -173,14 +220,17 @@ function rows(items, colors) {
           style: {
             display: "flex",
             flexDirection: "column",
+            width: INNER,
+            boxSizing: "border-box",
             background: colors.tile,
-            borderRadius: 20,
-            padding: "14px 18px",
-            marginBottom: 12,
+            borderRadius: 18,
+            padding: "12px 16px",
+            marginBottom: 10,
+            overflow: "hidden",
           },
         },
-        text(item.label, { fontSize: 28, lineHeight: 1.2 }),
-        item.detail ? text(item.detail, { fontSize: 22, lineHeight: 1.3, marginTop: 4, color: colors.muted }) : null,
+        text(item.label, { width: INNER - 32, fontSize: 26, lineHeight: 1.2 }),
+        item.detail ? text(item.detail, { width: INNER - 32, fontSize: 20, lineHeight: 1.3, marginTop: 4, color: colors.muted }) : null,
       ),
     ),
   );
@@ -189,56 +239,60 @@ function rows(items, colors) {
 function tiles(items, colors) {
   return h(
     "div",
-    { style: { display: "flex", flexWrap: "wrap", marginTop: 28 } },
-    ...items.slice(0, 6).map((item) =>
-      h(
+    { style: { display: "flex", flexWrap: "wrap", width: INNER, marginTop: 22 } },
+    ...items.slice(0, 6).map((item, index) => {
+      const copy = TILE - 24 - (item.image ? 76 : 0);
+      return h(
         "div",
         {
           style: {
             display: "flex",
             alignItems: "center",
-            width: 500,
+            width: TILE,
+            boxSizing: "border-box",
             background: colors.tile,
-            borderRadius: 20,
-            padding: 14,
-            marginRight: 16,
-            marginBottom: 16,
+            borderRadius: 18,
+            padding: 12,
+            marginRight: index % 2 === 0 ? GAP : 0,
+            marginBottom: GAP,
+            overflow: "hidden",
           },
         },
         item.image
           ? h("img", {
               src: item.image,
-              width: 72,
-              height: 72,
-              style: { borderRadius: 16, marginRight: 14, objectFit: "cover" },
+              width: 64,
+              height: 64,
+              style: { borderRadius: 14, marginRight: 12, objectFit: "cover" },
             })
           : null,
         h(
           "div",
-          { style: { display: "flex", flexDirection: "column" } },
-          text(item.label, { fontSize: 26, lineHeight: 1.2 }),
-          item.detail ? text(item.detail, { fontSize: 20, marginTop: 4, color: colors.muted }) : null,
+          { style: { display: "flex", flexDirection: "column", width: copy, overflow: "hidden" } },
+          text(item.label, { width: copy, fontSize: 24, lineHeight: 1.2 }),
+          item.detail ? text(item.detail, { width: copy, fontSize: 18, lineHeight: 1.3, marginTop: 4, color: colors.muted }) : null,
         ),
-      ),
-    ),
+      );
+    }),
   );
 }
 
 function shelf(items, colors, poster) {
+  const list = poster ? INNER - 214 : INNER;
   return h(
     "div",
-    { style: { display: "flex", marginTop: 28, flex: 1 } },
+    { style: { display: "flex", width: INNER, marginTop: 22 } },
     poster
       ? h("img", {
           src: poster,
-          width: 230,
-          height: 330,
-          style: { borderRadius: 18, objectFit: "cover", marginRight: 24 },
+          width: 190,
+          height: 280,
+          style: { borderRadius: 16, objectFit: "cover", marginRight: 24 },
         })
       : null,
     h(
       "div",
-      { style: { display: "flex", flexDirection: "column", flex: 1 } },
+      { style: { display: "flex", flexDirection: "column", width: list } },
       ...items.slice(0, 4).map((item) =>
         h(
           "div",
@@ -246,25 +300,28 @@ function shelf(items, colors, poster) {
             style: {
               display: "flex",
               alignItems: "center",
+              width: list,
+              boxSizing: "border-box",
               background: colors.tile,
-              borderRadius: 18,
-              padding: "12px 16px",
-              marginBottom: 12,
+              borderRadius: 16,
+              padding: "10px 14px",
+              marginBottom: 10,
+              overflow: "hidden",
             },
           },
           item.image && item.image !== poster
             ? h("img", {
                 src: item.image,
-                width: 42,
-                height: 62,
-                style: { borderRadius: 8, objectFit: "cover", marginRight: 14 },
+                width: 36,
+                height: 52,
+                style: { borderRadius: 8, objectFit: "cover", marginRight: 12 },
               })
             : null,
           h(
             "div",
-            { style: { display: "flex", flexDirection: "column" } },
-            text(item.label, { fontSize: 26, lineHeight: 1.2 }),
-            item.detail ? text(item.detail, { fontSize: 20, marginTop: 4, color: colors.muted }) : null,
+            { style: { display: "flex", flexDirection: "column", width: list - 28 - (item.image && item.image !== poster ? 48 : 0) } },
+            text(item.label, { width: list - 80, fontSize: 24, lineHeight: 1.2 }),
+            item.detail ? text(item.detail, { width: list - 80, fontSize: 18, marginTop: 4, color: colors.muted }) : null,
           ),
         ),
       ),
@@ -273,7 +330,7 @@ function shelf(items, colors, poster) {
 }
 
 function text(value, style) {
-  return h("div", { style: { display: "flex", ...style } }, value);
+  return h("div", { style: { display: "flex", overflow: "hidden", ...style } }, value);
 }
 
 function h(type, props, ...children) {
@@ -283,17 +340,26 @@ function h(type, props, ...children) {
 function palette(seed) {
   const safe = /^#[0-9a-fA-F]{6}$/.test(seed) ? seed : "#f5d8da";
   const source = Hct.fromInt(argbFromHex(safe));
-  const pastel = source.tone >= 78 && source.chroma <= 36;
-  const shift = pastel ? Math.min(0, Math.max(-8, source.tone - 96)) : 0;
-  const chroma = pastel ? Math.min(18, Math.max(12, source.chroma)) : 10;
-  const paint = (tone, amount = chroma) => hexFromArgb(Hct.from(source.hue, amount, Math.max(78, tone + shift)).toInt());
+  const hue = source.hue;
+  const scheme = new DynamicScheme({
+    sourceColorArgb: source.toInt(),
+    variant: 3,
+    contrastLevel: 0,
+    isDark: true,
+    primaryPalette: TonalPalette.fromHueAndChroma(hue, 200),
+    secondaryPalette: TonalPalette.fromHueAndChroma(hue, 36),
+    tertiaryPalette: TonalPalette.fromHueAndChroma((hue + 14) % 360, 52),
+    neutralPalette: TonalPalette.fromHueAndChroma(hue, 8),
+    neutralVariantPalette: TonalPalette.fromHueAndChroma(hue, 10),
+  });
+  const surface = (argb) => hexFromArgb(Hct.from(hue, 24, Hct.fromInt(argb).tone).toInt());
   return {
-    background: paint(93),
-    card: paint(89),
-    tile: paint(84, Math.min(20, chroma + 4)),
-    ink: hexFromArgb(Hct.from(source.hue, 10, 20).toInt()),
-    muted: hexFromArgb(Hct.from(source.hue, 8, 42).toInt()),
-    line: hexFromArgb(Hct.from(source.hue, 8, 80).toInt()),
+    background: surface(scheme.background),
+    card: surface(scheme.surfaceContainerLow),
+    tile: surface(scheme.surfaceContainerHigh),
+    ink: hexFromArgb(scheme.onSurface),
+    muted: hexFromArgb(scheme.onSurfaceVariant),
+    line: hexFromArgb(scheme.outlineVariant),
   };
 }
 
@@ -302,4 +368,47 @@ function plain(value) {
     .replace(/[^\u0020-\u024F\u2013\u2014\u2018\u2019\u201C\u201D]/g, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+const CRC_TABLE = new Uint32Array(256);
+for (let index = 0; index < 256; index += 1) {
+  let value = index;
+  for (let bit = 0; bit < 8; bit += 1) value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+  CRC_TABLE[index] = value >>> 0;
+}
+
+function encodePng(width, height, rgba) {
+  const stride = width * 4;
+  const raw = Buffer.alloc((stride + 1) * height);
+  for (let y = 0; y < height; y += 1) {
+    const row = y * (stride + 1);
+    raw[row] = 0;
+    raw.set(rgba.subarray(y * stride, (y + 1) * stride), row + 1);
+  }
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header[8] = 8;
+  header[9] = 6;
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    pngChunk("IHDR", header),
+    pngChunk("IDAT", deflateSync(raw)),
+    pngChunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+function pngChunk(type, data) {
+  const body = Buffer.concat([Buffer.from(type), data]);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(checksum(body));
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(data.length);
+  return Buffer.concat([length, body, crc]);
+}
+
+function checksum(buffer) {
+  let value = 0xffffffff;
+  for (const byte of buffer) value = CRC_TABLE[(value ^ byte) & 0xff] ^ (value >>> 8);
+  return (value ^ 0xffffffff) >>> 0;
 }

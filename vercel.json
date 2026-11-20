@@ -16,7 +16,7 @@
   ],
   "functions": {
     "api/og.ts": {
-      "includeFiles": "api/_lib/Geist-Regular.ttf"
+      "includeFiles": "{api/_lib/Geist-Regular.ttf,node_modules/@jsquash/webp/codec/dec/webp_dec.wasm}"
     }
   },
   "rewrites": [
