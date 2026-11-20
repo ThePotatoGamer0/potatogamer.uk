@@ -1107,6 +1107,35 @@ h2 {
   color: var(--md-sys-color-on-tertiary-container);
 }
 
+.card-menu {
+  position: fixed;
+  z-index: 40;
+  min-width: 168px;
+  padding: 6px;
+  border-radius: 16px;
+  background: var(--md-sys-color-surface-container);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--md-sys-color-shadow, #000) 28%, transparent);
+}
+
+.card-menu button {
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font-family: "Plus Jakarta Sans", Inter, sans-serif;
+  font-weight: 700;
+  text-align: left;
+}
+
+.card-menu button:hover,
+.card-menu button:focus-visible {
+  background: var(--md-sys-color-surface-container-high);
+  outline: none;
+}
+
 .toast {
   position: fixed;
   top: 16px;
