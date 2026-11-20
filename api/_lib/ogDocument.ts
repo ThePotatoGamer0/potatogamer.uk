@@ -78,7 +78,7 @@ export async function buildOgDocument(request: Request): Promise<OgDocument> {
   const lede = clip(built.lede, 160);
   const title = clip(built.title, 80);
   const stamp = contentStamp([
-    "card-marks",
+    "card-png",
     title,
     description,
     heading,
@@ -350,7 +350,7 @@ function activityPreview(data: Record<string, unknown>): ActivityPreview {
     preview.kind = `${activityKind(activity.type)} ${name}`;
     preview.title = cleanText(activity.details, 80) || name;
     preview.detail = cleanText(activity.state, 80);
-    preview.image = discordAsset(cleanText(activity.application_id, 24), cleanText(assets?.large_image, 120));
+    preview.image = discordAsset(cleanText(activity.application_id, 24), cleanText(assets?.large_image, 400));
     break;
   }
   return preview;

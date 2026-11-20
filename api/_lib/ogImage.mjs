@@ -1,10 +1,10 @@
-import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { deflateSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { DynamicScheme, Hct, TonalPalette, argbFromHex, hexFromArgb } from "@material/material-color-utilities";
 import decodeWebp, { init as initWebp } from "@jsquash/webp/decode.js";
+import { LUCIDE, SIMPLE } from "./ogMarks.mjs";
 import React from "react";
 import satori from "satori";
 import { initWasm, Resvg } from "@resvg/resvg-wasm";
@@ -75,26 +75,87 @@ function ensureWebp() {
 }
 
 async function withRasterImages(doc) {
+  const ink = palette(doc.accent || "#f5d8da").onAccent;
   const [picture, items] = await Promise.all([
     rasterSource(doc.picture),
-    Promise.all((Array.isArray(doc.items) ? doc.items : []).map(async (item) => ({ ...item, image: await rasterSource(item?.image) }))),
+    Promise.all(
+      (Array.isArray(doc.items) ? doc.items : []).map(async (item) => ({
+        ...item,
+        image: await rasterSource(item?.image),
+        icon: await iconPng(item?.mark, ink),
+      })),
+    ),
   ]);
   return { ...doc, picture, items };
 }
 
 async function rasterSource(source) {
-  if (typeof source !== "string" || !source.startsWith("data:image/webp")) return source || null;
+  if (typeof source !== "string" || !source) return null;
   try {
-    await ensureWebp();
-    const encoded = source.slice(source.indexOf(",") + 1);
-    const bytes = Buffer.from(encoded, "base64");
-    const image = await decodeWebp(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
-    const png = encodePng(image.width, image.height, image.data);
-    return `data:image/png;base64,${png.toString("base64")}`;
+    if (source.startsWith("data:image/webp")) return await webpDataToPng(source);
+    if (source.startsWith("data:image/")) return source;
+    if (!source.startsWith("https://")) return null;
+    const response = await fetch(source, { redirect: "follow", signal: AbortSignal.timeout(2500) });
+    if (!response.ok) return null;
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.length === 0 || bytes.length > 1_500_000) return null;
+    const type = response.headers.get("content-type") || "";
+    if (type.includes("webp") || bytes.subarray(0, 4).toString() === "RIFF") {
+      await ensureWebp();
+      const image = await decodeWebp(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+      return `data:image/png;base64,${encodePng(image.width, image.height, image.data).toString("base64")}`;
+    }
+    if (bytes[0] === 0x89 && bytes[1] === 0x50) return `data:image/png;base64,${bytes.toString("base64")}`;
+    if (bytes[0] === 0xff && bytes[1] === 0xd8) return `data:image/jpeg;base64,${bytes.toString("base64")}`;
+    return null;
   } catch (error) {
-    console.error("[api/og] webp skipped", error instanceof Error ? error.message : "error");
+    console.error("[api/og] picture skipped", error instanceof Error ? error.message : "error");
     return null;
   }
+}
+
+async function webpDataToPng(source) {
+  await ensureWebp();
+  const encoded = source.slice(source.indexOf(",") + 1);
+  const bytes = Buffer.from(encoded, "base64");
+  const image = await decodeWebp(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+  return `data:image/png;base64,${encodePng(image.width, image.height, image.data).toString("base64")}`;
+}
+
+const iconCache = new Map();
+
+async function iconPng(mark, color) {
+  if (typeof mark !== "string" || (!mark.startsWith("si:") && !mark.startsWith("lu:"))) return null;
+  const key = `${mark}|${color}`;
+  if (iconCache.has(key)) return iconCache.get(key);
+  const svg = iconSvg(mark.slice(3), mark.startsWith("lu:"), color);
+  if (!svg) {
+    iconCache.set(key, null);
+    return null;
+  }
+  await ensureWasm();
+  const rendered = new Resvg(svg, { fitTo: { mode: "width", value: 64 } }).render();
+  const png = `data:image/png;base64,${Buffer.from(rendered.asPng()).toString("base64")}`;
+  rendered.free();
+  iconCache.set(key, png);
+  return png;
+}
+
+function iconSvg(name, strokeIcon, color) {
+  if (strokeIcon) {
+    const nodes = LUCIDE[name];
+    if (!nodes) return "";
+    const body = nodes
+      .map(([type, props]) => `<${type} ${Object.entries(props).map(([key, value]) => `${key}="${value}"`).join(" ")}/>`)
+      .join("");
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+  }
+  if (STROKE_MARKS[name]) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${STROKE_MARKS[name]}"/></svg>`;
+  }
+  const path = SIMPLE[name];
+  if (!path) return "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24"><path fill="${color}" d="${path}"/></svg>`;
 }
 
 function cardImage(doc, picture) {
@@ -103,6 +164,7 @@ function cardImage(doc, picture) {
     label: plain(item?.label),
     detail: plain(item?.detail),
     image: picture ? item?.image || null : null,
+    icon: item?.icon || null,
     mark: typeof item?.mark === "string" ? item.mark : "",
   }));
   const showAvatar = Boolean(picture && doc.pictureKind === "avatar" && doc.picture);
@@ -139,21 +201,48 @@ function cardImage(doc, picture) {
         },
       },
       header(doc, colors, showAvatar),
-      doc.lede ? text(plain(doc.lede), { width: INNER, fontSize: 28, lineHeight: 1.25, marginTop: 16, color: colors.ink }) : null,
-      body(doc.layout, items, colors, showPoster ? doc.picture : null),
+      doc.layout === "profile"
+        ? h(
+            "div",
+            {
+              style: {
+                display: "flex",
+                flexGrow: 1,
+                alignItems: "center",
+                justifyContent: "center",
+                width: INNER,
+              },
+            },
+            doc.lede
+              ? text(plain(doc.lede), {
+                  width: INNER,
+                  fontSize: 42,
+                  lineHeight: 1.3,
+                  textAlign: "center",
+                  justifyContent: "center",
+                  color: colors.ink,
+                })
+              : null,
+          )
+        : doc.lede
+          ? text(plain(doc.lede), { width: INNER, fontSize: 28, lineHeight: 1.25, marginTop: 16, color: colors.ink })
+          : null,
+      doc.layout === "profile" ? chips(items, colors, true) : body(doc.layout, items, colors, showPoster ? doc.picture : null),
     ),
   );
 }
 
 function header(doc, colors, showAvatar) {
-  const handle = doc.layout === "profile" ? plain(doc.lines?.[0]) : "";
-  const titleWidth = showAvatar ? INNER - 136 : INNER;
+  const large = doc.layout === "profile";
+  const handle = large ? plain(doc.lines?.[0]) : "";
+  const avatar = large ? 176 : 112;
+  const titleWidth = showAvatar ? INNER - avatar - 28 : INNER;
   const title = h(
     "div",
     { style: { display: "flex", flexDirection: "column", width: titleWidth } },
-    text(plain(doc.kicker).toUpperCase(), { fontSize: 18, letterSpacing: 2, color: colors.muted }),
-    text(plain(doc.heading), { width: titleWidth, fontSize: 48, lineHeight: 1.05, marginTop: 8 }),
-    handle.startsWith("@") ? text(handle, { fontSize: 22, marginTop: 6, color: colors.muted }) : null,
+    text(plain(doc.kicker).toUpperCase(), { fontSize: large ? 20 : 18, letterSpacing: 2, color: colors.muted }),
+    text(plain(doc.heading), { width: titleWidth, fontSize: large ? 64 : 48, lineHeight: 1.05, marginTop: 8 }),
+    handle.startsWith("@") ? text(handle, { fontSize: 30, marginTop: 8, color: colors.muted }) : null,
   );
   if (!showAvatar) return title;
   return h(
@@ -161,9 +250,9 @@ function header(doc, colors, showAvatar) {
     { style: { display: "flex", alignItems: "center", width: INNER } },
     h("img", {
       src: doc.picture,
-      width: 112,
-      height: 112,
-      style: { borderRadius: 56, marginRight: 24, objectFit: "cover" },
+      width: avatar,
+      height: avatar,
+      style: { borderRadius: avatar / 2, marginRight: 28, objectFit: "cover" },
     }),
     title,
   );
@@ -178,12 +267,20 @@ function body(layout, items, colors, poster) {
   return rows(items, colors);
 }
 
-function chips(items, colors) {
+function chips(items, colors, alongBottom = false) {
   const shown = items.filter((item) => item.label).slice(0, 6);
   if (shown.length === 0) return null;
   return h(
     "div",
-    { style: { display: "flex", flexWrap: "wrap", width: INNER, marginTop: 22 } },
+    {
+      style: {
+        display: "flex",
+        flexWrap: "wrap",
+        justifyContent: alongBottom ? "center" : "flex-start",
+        width: INNER,
+        marginTop: alongBottom ? 0 : 22,
+      },
+    },
     ...shown.map((item) =>
       h(
         "div",
@@ -218,7 +315,7 @@ function rows(items, colors) {
     "div",
     { style: { display: "flex", flexDirection: "column", width: INNER, marginTop: 22 } },
     ...items.slice(0, 5).map((item) => {
-      const lead = item.image || brandMark(item.mark) ? 58 : 0;
+      const lead = item.image || item.icon ? 58 : 0;
       const copy = INNER - 32 - lead;
       return h(
         "div",
@@ -242,7 +339,7 @@ function rows(items, colors) {
               height: 46,
               style: { borderRadius: 23, marginRight: 12, objectFit: "cover" },
             })
-          : iconBox(item.mark, colors),
+          : iconBox(item.icon, colors),
         h(
           "div",
           { style: { display: "flex", flexDirection: "column", width: copy } },
@@ -282,7 +379,7 @@ function specs(items, colors) {
             overflow: "hidden",
           },
         },
-        iconBox(item.mark, colors),
+        iconBox(item.icon, colors),
         h(
           "div",
           { style: { display: "flex", flexDirection: "column", width: copy } },
@@ -514,10 +611,6 @@ const STROKE_MARKS = {
   mail: "M3 5h18v14H3V5zm0 0 9 7 9-7",
 };
 
-function brandMark(mark) {
-  return mark.startsWith("si:") || mark.startsWith("lu:");
-}
-
 function statusDot(mark, marginLeft = 8) {
   const status = mark.startsWith("st:") ? mark.slice(3) : "";
   const color = STATUS_COLOR[status];
@@ -527,8 +620,7 @@ function statusDot(mark, marginLeft = 8) {
   });
 }
 
-function iconBox(mark, colors) {
-  const icon = glyph(mark, colors.onAccent, 22);
+function iconBox(icon, colors) {
   if (!icon) return null;
   return h(
     "div",
@@ -544,89 +636,8 @@ function iconBox(mark, colors) {
         flex: "none",
       },
     },
-    icon,
+    h("img", { src: icon, width: 22, height: 22 }),
   );
-}
-
-function glyph(mark, color, size) {
-  if (mark.startsWith("si:")) return simpleIcon(mark.slice(3), color, size);
-  if (mark.startsWith("lu:")) return lucideIcon(mark.slice(3), color, size);
-  return null;
-}
-
-const simplePaths = new Map();
-
-function simpleIcon(name, color, size) {
-  if (!/^[a-z0-9]+$/.test(name)) return null;
-  if (STROKE_MARKS[name]) {
-    return h(
-      "svg",
-      {
-        width: size,
-        height: size,
-        viewBox: "0 0 24 24",
-        fill: "none",
-        stroke: color,
-        strokeWidth: 1.8,
-        strokeLinecap: "round",
-        strokeLinejoin: "round",
-      },
-      h("path", { d: STROKE_MARKS[name] }),
-    );
-  }
-  if (!simplePaths.has(name)) {
-    try {
-      const svg = readFileSync(require.resolve(`simple-icons/icons/${name}.svg`), "utf8");
-      simplePaths.set(name, /d="([^"]+)"/.exec(svg)?.[1] ?? "");
-    } catch {
-      simplePaths.set(name, "");
-    }
-  }
-  const path = simplePaths.get(name);
-  if (!path) return null;
-  return h("svg", { width: size, height: size, viewBox: "0 0 24 24" }, h("path", { d: path, fill: color }));
-}
-
-const lucideNodes = new Map();
-
-function lucideIcon(name, color, size) {
-  if (!/^[a-z0-9-]+$/.test(name)) return null;
-  if (!lucideNodes.has(name)) {
-    try {
-      const source = readFileSync(require.resolve(`lucide-react/dist/esm/icons/${name}.mjs`), "utf8");
-      const nodes = [];
-      for (const match of source.matchAll(/\[\s*"(path|rect|circle)",\s*\{([^}]*)\}/g)) {
-        nodes.push([match[1], attrs(match[2])]);
-      }
-      lucideNodes.set(name, nodes);
-    } catch {
-      lucideNodes.set(name, []);
-    }
-  }
-  const nodes = lucideNodes.get(name);
-  if (!nodes?.length) return null;
-  return h(
-    "svg",
-    {
-      width: size,
-      height: size,
-      viewBox: "0 0 24 24",
-      fill: "none",
-      stroke: color,
-      strokeWidth: 1.8,
-      strokeLinecap: "round",
-      strokeLinejoin: "round",
-    },
-    ...nodes.map(([type, props]) => h(type, props)),
-  );
-}
-
-function attrs(source) {
-  const props = {};
-  for (const match of source.matchAll(/([a-z]+): "([^"]*)"/g)) {
-    if (match[1] !== "key") props[match[1]] = match[2];
-  }
-  return props;
 }
 
 function splitDetail(value) {
