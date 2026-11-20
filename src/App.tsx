@@ -3,6 +3,7 @@ import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } fr
 import { cardFromPath } from "../shared/og";
 import { isDiscordId } from "../shared/site";
 import { Atmosphere } from "./components/Atmosphere";
+import { ExternalLinkGuard } from "./components/ExternalLinkGuard";
 import { SiteMenu } from "./components/SiteMenu";
 import { MaterialSquiggle } from "./components/MaterialSquiggle";
 import { ThemeSwitcher } from "./components/ThemeSwitcher";
@@ -71,6 +72,7 @@ function SiteFrame() {
 
   return (
     <>
+      <ExternalLinkGuard />
       <Atmosphere />
       <MaterialSquiggle />
       <StripSlash />

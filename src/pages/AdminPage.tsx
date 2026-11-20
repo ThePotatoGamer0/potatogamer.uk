@@ -1,3 +1,4 @@
+import { Check, Plus } from "lucide-react";
 import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
 import { ICON_LABELS, ICON_NAMES, MEDIA_KINDS, SPEC_ICONS, mediaArt, normalizeConfig, passwordIssue, type FriendConfig, type GuestbookEntry, type KvRow, type MediaKind, type MediaPick, type SiteConfig, type SiteLink, type SpecIcon, type SpecRow } from "../../shared/site";
 import { useConfig } from "../context/AppProviders";
@@ -854,81 +855,102 @@ function MediaEditor({ picks, onChange }: { picks: MediaPick[]; onChange: (picks
       <div className="section-head">
         <div>
           <h2>Media</h2>
-          <p className="muted">Search for a show, movie, anime, or game.</p>
+          <p className="muted">What you have picked, then a search to add more.</p>
         </div>
       </div>
-      <form className="media-search" onSubmit={(event) => void search(event)}>
-        <label className="field">
-          <span>Search</span>
-          <input value={query} aria-label="Search media" onChange={(event) => setQuery(event.target.value)} />
-        </label>
-        <label className="field media-kind">
-          <span>Kind</span>
-          <select value={kind} aria-label="Search kind" onChange={(event) => setKind(event.target.value as MediaKind)}>
-            {MEDIA_KINDS.map((option) => (
-              <option key={option} value={option}>
-                {MEDIA_KIND_LABEL[option]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button type="submit" className="btn tonal" disabled={searching || query.trim().length < 2}>
-          {searching ? "Searching" : "Search"}
-        </button>
-      </form>
-      {note ? <p className="muted media-note">{note}</p> : null}
-      {results.length > 0 ? (
-        <div className="media-hits">
-          {results.map((choice) => {
-            const thumb = mediaArt(choice.poster, "w185");
-            return (
-              <button key={`${choice.kind}-${choice.tmdbId}`} type="button" className="media-hit" onClick={() => choose(choice)}>
-                {thumb ? <img className="media-thumb" src={thumb} alt="" /> : <span className="media-thumb monogram">{choice.name.slice(0, 1)}</span>}
-                <span>
-                  <strong>{choice.name}</strong>
-                  <small>
-                    {MEDIA_KIND_LABEL[choice.kind]}
-                    {choice.year ? ` · ${choice.year}` : ""}
-                  </small>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-      <div className="editor-list media-picks">
-        {picks.map((pick, index) => {
-          const thumb = mediaArt(pick.poster, "w185");
-          return (
-            <div key={pick.id} className="media-pick">
-              {thumb ? <img className="media-thumb" src={thumb} alt="" /> : <span className="media-thumb monogram">{pick.name.slice(0, 1)}</span>}
-              <div className="media-pick-copy">
-                <strong>{pick.name}</strong>
-                <small>
-                  {MEDIA_KIND_LABEL[pick.kind]}
-                  {pick.year ? ` · ${pick.year}` : ""}
-                </small>
-              </div>
-              <div className="row-actions">
-                <button type="button" className="icon-btn" aria-label="Move up" disabled={index === 0} onClick={() => onChange(moveItem(picks, index, -1))}>
-                  ↑
-                </button>
+      <div className="media-block">
+        <h3>Selected</h3>
+        {picks.length === 0 ? (
+          <p className="muted">Nothing selected yet.</p>
+        ) : (
+          <div className="media-picks">
+            {picks.map((pick, index) => {
+              const thumb = mediaArt(pick.poster, "w185");
+              return (
+                <div key={pick.id} className="media-pick">
+                  {thumb ? <img className="media-thumb" src={thumb} alt="" /> : <span className="media-thumb monogram">{pick.name.slice(0, 1)}</span>}
+                  <div className="media-pick-copy">
+                    <strong>{pick.name}</strong>
+                    <small>
+                      {MEDIA_KIND_LABEL[pick.kind]}
+                      {pick.year ? ` · ${pick.year}` : ""}
+                    </small>
+                  </div>
+                  <div className="row-actions">
+                    <button type="button" className="icon-btn" aria-label="Move up" disabled={index === 0} onClick={() => onChange(moveItem(picks, index, -1))}>
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      aria-label="Move down"
+                      disabled={index === picks.length - 1}
+                      onClick={() => onChange(moveItem(picks, index, 1))}
+                    >
+                      ↓
+                    </button>
+                    <button type="button" className="icon-btn danger" aria-label={`Remove ${pick.name}`} onClick={() => onChange(picks.filter((item) => item.id !== pick.id))}>
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      <div className="media-block media-finder">
+        <h3>Search</h3>
+        <form className="media-search" onSubmit={(event) => void search(event)}>
+          <label className="field">
+            <span>Title</span>
+            <input value={query} aria-label="Search media" onChange={(event) => setQuery(event.target.value)} />
+          </label>
+          <label className="field media-kind">
+            <span>Kind</span>
+            <select value={kind} aria-label="Search kind" onChange={(event) => setKind(event.target.value as MediaKind)}>
+              {MEDIA_KINDS.map((option) => (
+                <option key={option} value={option}>
+                  {MEDIA_KIND_LABEL[option]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="submit" className="btn tonal" disabled={searching || query.trim().length < 2}>
+            {searching ? "Searching" : "Search"}
+          </button>
+        </form>
+        {note ? <p className="muted media-note">{note}</p> : null}
+        {results.length > 0 ? (
+          <div className="media-hits" aria-label="Search results">
+            {results.map((choice) => {
+              const thumb = mediaArt(choice.poster, "w185");
+              const added = picks.some((pick) => pick.tmdbId === choice.tmdbId && pick.kind === choice.kind);
+              return (
                 <button
+                  key={`${choice.kind}-${choice.tmdbId}`}
                   type="button"
-                  className="icon-btn"
-                  aria-label="Move down"
-                  disabled={index === picks.length - 1}
-                  onClick={() => onChange(moveItem(picks, index, 1))}
+                  className={added ? "media-hit is-added" : "media-hit"}
+                  aria-pressed={added}
+                  onClick={() => choose(choice)}
                 >
-                  ↓
+                  {thumb ? <img className="media-thumb" src={thumb} alt="" /> : <span className="media-thumb monogram">{choice.name.slice(0, 1)}</span>}
+                  <span className="media-pick-copy">
+                    <strong>{choice.name}</strong>
+                    <small>
+                      {MEDIA_KIND_LABEL[choice.kind]}
+                      {choice.year ? ` · ${choice.year}` : ""}
+                    </small>
+                  </span>
+                  <span className={added ? "media-mark is-added" : "media-mark"}>
+                    {added ? <Check aria-hidden="true" /> : <Plus aria-hidden="true" />}
+                    <span className="sr">{added ? "Added" : "Add"}</span>
+                  </span>
                 </button>
-                <button type="button" className="icon-btn danger" aria-label={`Remove ${pick.name}`} onClick={() => onChange(picks.filter((item) => item.id !== pick.id))}>
-                  ✕
-                </button>
-              </div>
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        ) : null}
       </div>
     </section>
   );
