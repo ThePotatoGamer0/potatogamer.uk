@@ -3,6 +3,7 @@ import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } fr
 import { cardFromPath } from "../shared/og";
 import { OWNER_DISCORD_ID } from "../shared/site";
 import { Atmosphere } from "./components/Atmosphere";
+import { SiteMenu } from "./components/SiteMenu";
 import { MaterialSquiggle } from "./components/MaterialSquiggle";
 import { ThemeSwitcher } from "./components/ThemeSwitcher";
 import { AppProviders, useDiscordProfiles, usePresence } from "./context/AppProviders";
@@ -58,7 +59,7 @@ export function App() {
       <Atmosphere />
       <MaterialSquiggle />
       <StripSlash />
-      <div className="scroller">
+      <SiteMenu>
         <div className="app">
           <a className="skip" href="#content">
             Skip to content
@@ -82,7 +83,7 @@ export function App() {
             <Link to="/admin">Admin</Link>
           </footer>
         </div>
-      </div>
+      </SiteMenu>
     </AppProviders>
   );
 }

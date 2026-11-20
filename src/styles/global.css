@@ -1107,33 +1107,54 @@ h2 {
   color: var(--md-sys-color-on-tertiary-container);
 }
 
-.card-menu {
-  position: fixed;
-  z-index: 40;
-  min-width: 168px;
+.site-menu {
+  z-index: 50;
+  min-width: 232px;
   padding: 6px;
-  border-radius: 16px;
-  background: var(--md-sys-color-surface-container);
-  border: 1px solid var(--md-sys-color-outline-variant);
-  box-shadow: 0 12px 32px color-mix(in srgb, var(--md-sys-color-shadow, #000) 28%, transparent);
-}
-
-.card-menu button {
-  width: 100%;
-  padding: 10px 12px;
-  border: 0;
   border-radius: 12px;
-  background: transparent;
+  background: var(--md-sys-color-surface-container);
   color: var(--md-sys-color-on-surface);
-  font-family: "Plus Jakarta Sans", Inter, sans-serif;
-  font-weight: 700;
-  text-align: left;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--md-sys-color-shadow) 32%, transparent);
+  transform-origin: var(--radix-context-menu-content-transform-origin);
 }
 
-.card-menu button:hover,
-.card-menu button:focus-visible {
-  background: var(--md-sys-color-surface-container-high);
-  outline: none;
+.site-menu[data-state="open"] { animation: site-menu-in 90ms ease-out; }
+
+.site-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-family: "Plus Jakarta Sans", Inter, sans-serif;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.3;
+  user-select: none;
+}
+
+.site-menu-item[data-highlighted] { background: var(--md-sys-color-surface-container-high); }
+.site-menu-item:focus-visible { outline: none; }
+.site-menu-item[data-disabled] { color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent); }
+
+.site-menu-key {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.site-menu-item[data-disabled] .site-menu-key { color: inherit; }
+
+.site-menu [role="separator"] {
+  height: 1px;
+  margin: 6px 8px;
+  background: var(--md-sys-color-outline-variant);
+}
+
+@keyframes site-menu-in {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .toast {

@@ -8,7 +8,6 @@ import { SetupCard } from "../components/cards/SetupCard";
 import { LinksCard } from "../components/cards/LinksCard";
 import { MediaCard } from "../components/cards/MediaCard";
 import { ProfileCard } from "../components/cards/ProfileCard";
-import { CardLinkMenu } from "../components/CardLinkMenu";
 import { CardBoundary } from "../components/Toast";
 import { useConfig } from "../context/AppProviders";
 
@@ -43,7 +42,6 @@ export function HomePage({ focus }: { focus?: OgCard }) {
 
   return (
     <div className="bento">
-      <CardLinkMenu />
       {error ? <p className="banner span-12">Showing the built-in site defaults. {error}</p> : null}
       <div className="span-5">
         <CardBoundary title="Profile">
