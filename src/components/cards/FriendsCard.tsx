@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import type { FriendConfig } from "../../../shared/site";
 import { safeHttpUrl } from "../../../shared/site";
 import { useDiscordProfiles, usePresence } from "../../context/AppProviders";
@@ -83,10 +84,49 @@ export function FriendsCard({ friends }: { friends: FriendConfig[] }) {
 }
 
 function Nameplate({ video, still }: { video: string; still: string }) {
+  const clip = useRef<HTMLVideoElement>(null);
+  const [playing, setPlaying] = useState(false);
+
+  useEffect(() => {
+    const node = clip.current;
+    if (!node) return;
+    node.muted = true;
+    const start = () => {
+      node.muted = true;
+      void node.play().catch(() => undefined);
+    };
+    const onPlaying = () => setPlaying(true);
+    start();
+    node.addEventListener("playing", onPlaying);
+    node.addEventListener("loadeddata", start);
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) start();
+    });
+    observer.observe(node);
+    return () => {
+      node.removeEventListener("playing", onPlaying);
+      node.removeEventListener("loadeddata", start);
+      observer.disconnect();
+    };
+  }, [video]);
+
   return (
     <>
-      <img className="nameplate still" src={still} alt="" />
-      <video className="nameplate motion" src={video} poster={still} autoPlay muted loop playsInline aria-hidden="true" />
+      <img className={playing ? "nameplate still" : "nameplate still show"} src={still} alt="" />
+      <video
+        ref={clip}
+        className={playing ? "nameplate motion" : "nameplate motion pending"}
+        src={video}
+        autoPlay
+        muted
+        loop
+        playsInline
+        webkit-playsinline="true"
+        preload="auto"
+        disablePictureInPicture
+        disableRemotePlayback
+        aria-hidden="true"
+      />
     </>
   );
 }

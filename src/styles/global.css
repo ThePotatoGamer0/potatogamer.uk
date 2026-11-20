@@ -718,6 +718,17 @@ h2 {
   mask-image: linear-gradient(90deg, transparent 0%, #000 58%);
 }
 .nameplate.still { display: none; }
+.nameplate.still.show { display: block; }
+.nameplate.motion.pending { opacity: 0; }
+.nameplate.motion::-webkit-media-controls,
+.nameplate.motion::-webkit-media-controls-enclosure,
+.nameplate.motion::-webkit-media-controls-start-playback-button,
+.nameplate.motion::-webkit-media-controls-overlay-play-button {
+  display: none !important;
+  -webkit-appearance: none;
+  opacity: 0;
+  pointer-events: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .nameplate.motion { display: none; }
   .nameplate.still { display: block; }

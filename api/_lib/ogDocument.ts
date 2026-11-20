@@ -9,6 +9,7 @@ import {
   type OgCard,
   type OgDocument,
 } from "../../shared/og.js";
+import { samplePngSeed } from "./samplePng.js";
 import { readConfig, readEntries } from "./store.js";
 
 const HOME_BLURB = "Live Discord presence, interests, setup, and a guestbook.";
@@ -43,17 +44,36 @@ export async function buildOgDocument(request: Request): Promise<OgDocument> {
   const card = cardFromPath(url.pathname) ?? cardFromQuery(url.searchParams.get("card")) ?? null;
   const origin = requestOrigin(request);
   const config = await loadConfig();
-  const accent = /^#[0-9a-fA-F]{6}$/.test(config.color.seed) ? config.color.seed : DEFAULT_SEED;
-  const owner = card === null || card === "profile" || card === "activity" ? await loadOwner(config.quote) : null;
+  const storedSeed = /^#[0-9a-fA-F]{6}$/.test(config.color.seed) ? config.color.seed : DEFAULT_SEED;
+  const owner = await loadOwner(config.quote);
+  const accent = config.color.source === "manual" ? storedSeed : (await avatarSeed(owner?.avatar)) || storedSeed;
   const quote = owner?.quote || spoken(config.quote);
   const name = owner?.name || "ThePotatoGamer";
 
   const built = await compose(card, config, owner, quote, name);
-  const lines = built.lines.map((line) => clip(line, 80)).filter(Boolean).slice(0, 5);
-  const description = clip(built.description || HOME_BLURB, 220);
+  const lines = built.lines.map((line) => clip(line, 90)).filter(Boolean).slice(0, 6);
+  const items = built.items
+    .map((item) => ({
+      label: clip(item.label, 48),
+      detail: clip(item.detail, 72),
+      image: item.image,
+    }))
+    .filter((item) => item.label || item.detail || item.image)
+    .slice(0, 6);
+  const description = card ? `All of ThePotatoGamer - ${OG_CARDS[card].kicker}` : "All of ThePotatoGamer";
   const heading = clip(built.heading, 48);
+  const lede = clip(built.lede, 160);
   const title = clip(built.title, 80);
-  const stamp = contentStamp([title, description, heading, accent, built.picture ?? "", ...lines]);
+  const stamp = contentStamp([
+    title,
+    description,
+    heading,
+    lede,
+    accent,
+    built.picture ?? "",
+    ...lines,
+    ...items.flatMap((item) => [item.label, item.detail, item.image ?? ""]),
+  ]);
   const image = new URL("/api/og", origin);
   if (card) image.searchParams.set("card", card);
   image.searchParams.set("v", stamp);
@@ -64,7 +84,10 @@ export async function buildOgDocument(request: Request): Promise<OgDocument> {
     description,
     kicker: built.kicker,
     heading,
+    lede,
     lines: lines.length > 0 ? lines : [HOME_BLURB],
+    items,
+    layout: built.layout,
     url: `${origin}${card ? `/${card}` : "/"}`,
     image: image.toString(),
     accent,
@@ -79,100 +102,115 @@ async function compose(
   owner: OwnerSnapshot | null,
   quote: string,
   name: string,
-): Promise<Pick<OgDocument, "title" | "description" | "kicker" | "heading" | "lines" | "picture" | "pictureKind">> {
-  if (card === null) {
+): Promise<Pick<OgDocument, "title" | "kicker" | "heading" | "lede" | "lines" | "items" | "layout" | "picture" | "pictureKind">> {
+  if (card === null || card === "profile") {
+    const chips = config.interests.slice(0, 6).map((row) => item(row.label, "", null));
     const into = intoLine(config);
+    const meta = card === "profile" ? OG_CARDS.profile : { kicker: "Profile", heading: name };
     return {
-      title: "ThePotatoGamer",
-      description: [quote, HOME_BLURB].filter(Boolean).join(" "),
-      kicker: "Home",
+      title: card === "profile" ? name : "ThePotatoGamer",
+      kicker: meta.kicker,
       heading: name,
-      lines: [quote, into].filter(Boolean),
+      lede: quote,
+      lines: [owner?.handle ?? "", quote, into].filter(Boolean),
+      items: chips,
+      layout: "profile",
       picture: owner?.avatar ?? null,
       pictureKind: owner?.avatar ? "avatar" : null,
     };
   }
 
   const meta = OG_CARDS[card];
-  if (card === "profile") {
-    const into = intoLine(config);
-    return {
-      title: name,
-      description: [owner?.handle, quote, into].filter(Boolean).join(" "),
-      kicker: meta.kicker,
-      heading: name,
-      lines: [owner?.handle ?? "", quote, into].filter(Boolean),
-      picture: owner?.avatar ?? null,
-      pictureKind: owner?.avatar ? "avatar" : null,
-    };
-  }
-
   if (card === "activity") {
     const lines = owner?.lines.length ? owner.lines : ["Nothing playing right now."];
     return {
       title: `${meta.heading} · ThePotatoGamer`,
-      description: lines.join(" · "),
       kicker: meta.kicker,
       heading: meta.heading,
+      lede: owner?.handle ?? "",
       lines,
+      items: lines.map((line) => item(line, "", null)),
+      layout: "rows",
       picture: owner?.avatar ?? null,
       pictureKind: owner?.avatar ? "avatar" : null,
     };
   }
 
   if (card === "interests") {
-    const lines = config.interests.slice(0, 4).map(pair).filter(Boolean);
-    if (config.interests.length > 4) lines.push(`+${config.interests.length - 4} more`);
-    return textCard(meta, lines, "No interests yet.");
+    const items = config.interests.slice(0, 6).map((row) => item(row.label, row.value, previewImage(row.image)));
+    const lines = items.map((entry) => pair(entry));
+    if (config.interests.length > 6) lines.push(`+${config.interests.length - 6} more`);
+    return filled(meta, lines, items, "tiles", "No interests yet.");
   }
 
   if (card === "links") {
-    const lines = config.links.slice(0, 5).map((link) => pair({ label: link.title, value: link.handle }));
-    return textCard(meta, lines.filter(Boolean), "No links yet.");
+    const items = config.links.slice(0, 5).map((link) => item(link.title, link.handle, null));
+    return filled(meta, items.map((entry) => pair(entry)), items, "rows", "No links yet.");
   }
 
   if (card === "friends") {
-    const labels = config.friends.map((friend) => friend.label).filter(Boolean).slice(0, 5);
+    const items = config.friends.slice(0, 6).map((friend) => item(friend.label || "Friend", "", null));
     const fallback = config.friends.length === 1 ? "1 friend" : `${config.friends.length} friends`;
-    return textCard(meta, labels.length > 0 ? labels : config.friends.length > 0 ? [fallback] : [], "No friends added yet.");
+    return filled(
+      meta,
+      items.length > 0 ? items.map((entry) => entry.label) : config.friends.length > 0 ? [fallback] : [],
+      items,
+      "rows",
+      "No friends added yet.",
+    );
   }
 
   if (card === "media") {
-    const lines = config.media.slice(0, 4).map((item) => {
-      const year = item.year ? ` (${item.year})` : "";
-      return `${KIND_LABEL[item.kind]} — ${item.name}${year}`;
+    const items = config.media.slice(0, 4).map((entry) => {
+      const year = entry.year ? ` (${entry.year})` : "";
+      return item(`${entry.name}${year}`, KIND_LABEL[entry.kind], mediaArt(entry.poster, "w500"));
     });
-    const poster = config.media.map((item) => mediaArt(item.poster, "w500")).find((art): art is string => Boolean(art)) ?? null;
-    const cardText = textCard(meta, lines, "Nothing on rotation yet.");
+    const poster = items.map((entry) => entry.image).find((art): art is string => Boolean(art)) ?? null;
+    const cardText = filled(meta, items.map((entry) => pair(entry)), items, "media", "Nothing on rotation yet.");
     return { ...cardText, picture: poster, pictureKind: poster ? "poster" : null };
   }
 
   if (card === "setup" || card === "homelab") {
     const rows = card === "setup" ? config.setup : config.homelab;
-    const lines = rows.slice(0, 5).map((row) => pair({ label: row.label, value: row.detail ? `${row.value} · ${row.detail}` : row.value }));
-    return textCard(meta, lines.filter(Boolean), "No specs yet.");
+    const items = rows.slice(0, 6).map((row) => item(row.label, row.detail ? `${row.value} · ${row.detail}` : row.value, null));
+    return filled(meta, items.map((entry) => pair(entry)), items, "rows", "No specs yet.");
   }
 
   const entries = await readEntries().catch(() => []);
-  const lines = entries.slice(0, 4).map((entry) => pair({ label: entry.username, value: entry.message }));
-  return textCard(meta, lines.filter(Boolean), "Sign the guestbook.");
+  const items = entries.slice(0, 4).map((entry) => item(entry.username, entry.message, null));
+  return filled(meta, items.map((entry) => pair(entry)), items, "rows", "Sign the guestbook.");
 }
 
-function textCard(
+function filled(
   meta: { kicker: string; heading: string },
   lines: string[],
+  items: OgDocument["items"],
+  layout: OgDocument["layout"],
   empty: string,
-): Pick<OgDocument, "title" | "description" | "kicker" | "heading" | "lines" | "picture" | "pictureKind"> {
-  const body = lines.length > 0 ? lines : [empty];
+): Pick<OgDocument, "title" | "kicker" | "heading" | "lede" | "lines" | "items" | "layout" | "picture" | "pictureKind"> {
+  const body = lines.filter(Boolean);
+  const shown = body.length > 0 ? body : [empty];
   return {
     title: `${meta.heading} · ThePotatoGamer`,
-    description: body.join(" · "),
     kicker: meta.kicker,
     heading: meta.heading,
-    lines: body,
+    lede: "",
+    lines: shown,
+    items: items.length > 0 ? items : [item(empty, "", null)],
+    layout,
     picture: null,
     pictureKind: null,
   };
+}
+
+function item(label: string, detail: string, image: string | null): OgDocument["items"][number] {
+  return { label, detail, image };
+}
+
+function previewImage(value: string): string | null {
+  if (!value || value.length > 120_000) return null;
+  if (value.startsWith("data:image/") && !value.startsWith("data:image/svg")) return value;
+  return null;
 }
 
 function intoLine(config: SiteConfig): string {
@@ -181,9 +219,30 @@ function intoLine(config: SiteConfig): string {
   return `Into ${labels.join(", ")}`;
 }
 
-function pair(row: { label: string; value: string }): string {
-  if (row.label && row.value) return `${row.label} — ${row.value}`;
-  return row.label || row.value;
+function pair(row: { label: string; detail: string }): string {
+  if (row.label && row.detail) return `${row.label} — ${row.detail}`;
+  return row.label || row.detail;
+}
+
+const seedCache = new Map<string, string>();
+
+async function avatarSeed(url: string | null | undefined): Promise<string | null> {
+  if (!url) return null;
+  const cached = seedCache.get(url);
+  if (cached) return cached;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 1500);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) return null;
+    const seed = samplePngSeed(Buffer.from(await response.arrayBuffer()));
+    if (seed) seedCache.set(url, seed);
+    return seed;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function loadConfig(): Promise<SiteConfig> {

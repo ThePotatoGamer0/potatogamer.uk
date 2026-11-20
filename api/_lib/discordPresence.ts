@@ -245,8 +245,12 @@ function namedActivity(value: unknown): string {
 
 function memberId(value: unknown): string {
   if (!value || typeof value !== "object") return "";
-  const id = (value as { id?: unknown }).id;
-  return typeof id === "string" && SNOWFLAKE.test(id) ? id : "";
+  const record = value as { id?: unknown; user?: unknown };
+  if (typeof record.id === "string" && SNOWFLAKE.test(record.id)) return record.id;
+  const user = record.user;
+  if (!user || typeof user !== "object") return "";
+  const nested = (user as { id?: unknown }).id;
+  return typeof nested === "string" && SNOWFLAKE.test(nested) ? nested : "";
 }
 
 function normalizeStatus(value: unknown): BotStatus["status"] | null {

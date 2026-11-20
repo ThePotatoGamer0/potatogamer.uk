@@ -12,13 +12,24 @@ export const OG_CARDS = {
 
 export type OgCard = keyof typeof OG_CARDS;
 
+export type OgLayout = "profile" | "rows" | "tiles" | "media";
+
+export interface OgItem {
+  label: string;
+  detail: string;
+  image: string | null;
+}
+
 export interface OgDocument {
   card: OgCard | null;
   title: string;
   description: string;
   kicker: string;
   heading: string;
+  lede: string;
   lines: string[];
+  items: OgItem[];
+  layout: OgLayout;
   url: string;
   image: string;
   accent: string;
