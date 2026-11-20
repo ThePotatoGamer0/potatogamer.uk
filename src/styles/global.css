@@ -1184,10 +1184,22 @@ h2 {
 
 .footer {
   display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
   justify-content: space-between;
+  gap: 8px 18px;
   margin-top: 22px;
   color: var(--md-sys-color-on-surface-variant);
   font-size: 0.9rem;
+}
+.footer-meta {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+}
+.footer-credit {
+  margin: 0;
+  font-size: 0.78rem;
 }
 .footer a { font-weight: 700; }
 

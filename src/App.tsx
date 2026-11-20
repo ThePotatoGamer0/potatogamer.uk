@@ -101,8 +101,15 @@ function SiteFrame() {
             )}
           </main>
           <footer className="footer">
-            <span>{config.identity.name || "Home"}</span>
-            {needsSetup ? null : <Link to="/admin">Admin</Link>}
+            <span className="footer-meta">
+              <span>{config.identity.name || "Home"}</span>
+              {needsSetup ? null : <Link to="/admin">Admin</Link>}
+            </span>
+            <p className="footer-credit">
+              Made by <a href="https://potatogamer.uk">ThePotatoGamer</a>
+              <span aria-hidden="true"> · </span>
+              Designed to the <a href="https://m3.material.io/">Material 3</a> spec
+            </p>
           </footer>
         </div>
       </SiteMenu>
