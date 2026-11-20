@@ -1,24 +1,27 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { cardFromPath } from "../shared/og";
-import { OWNER_DISCORD_ID } from "../shared/site";
+import { isDiscordId } from "../shared/site";
 import { Atmosphere } from "./components/Atmosphere";
 import { SiteMenu } from "./components/SiteMenu";
 import { MaterialSquiggle } from "./components/MaterialSquiggle";
 import { ThemeSwitcher } from "./components/ThemeSwitcher";
-import { AppProviders, useDiscordProfiles, usePresence } from "./context/AppProviders";
+import { AppProviders, useConfig, useDiscordProfiles, usePresence } from "./context/AppProviders";
 import { avatarUrl, defaultAvatarUrl } from "./lib/discord";
 import { AdminPage } from "./pages/AdminPage";
 import { HomePage } from "./pages/HomePage";
+import { SetupPage } from "./pages/SetupPage";
 
 function BrandMark() {
+  const { config } = useConfig();
+  const ownerId = isDiscordId(config.identity.discordId) ? config.identity.discordId : "";
   const { owner } = usePresence();
   const { users } = useDiscordProfiles();
-  const user = owner?.discord_user ?? users[OWNER_DISCORD_ID] ?? null;
+  const user = ownerId ? (owner?.discord_user ?? users[ownerId] ?? null) : null;
   const photo = user ? avatarUrl(user, 128) : "";
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [photo]);
-  const src = photo ? (failed ? defaultAvatarUrl(user?.id ?? OWNER_DISCORD_ID) : photo) : "";
+  const src = photo ? (failed ? defaultAvatarUrl(user?.id ?? ownerId) : photo) : "";
 
   return (
     <span className="brand-mark" aria-hidden="true">
@@ -53,9 +56,21 @@ function StripSlash() {
   return null;
 }
 
-export function App() {
+function SetupRoute() {
+  const { needsSetup, loading } = useConfig();
+  if (loading) return <section className="card"><p className="muted">Checking…</p></section>;
+  if (needsSetup) return <SetupPage />;
+  return <HomePage focus="setup" />;
+}
+
+function SiteFrame() {
+  const { config, needsSetup, loading } = useConfig();
+  const location = useLocation();
+  const siteName = config.identity.siteName || "Home";
+  const showWizard = needsSetup && location.pathname !== "/setup";
+
   return (
-    <AppProviders>
+    <>
       <Atmosphere />
       <MaterialSquiggle />
       <StripSlash />
@@ -67,23 +82,38 @@ export function App() {
           <header className="topbar">
             <Link to="/" className="brand">
               <BrandMark />
-              <span>potatogamer.uk</span>
+              <span>{siteName}</span>
             </Link>
             <ThemeSwitcher />
           </header>
           <main id="content">
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/admin" element={<AdminPage />} />
-              <Route path="/:card" element={<CardPage />} />
-            </Routes>
+            {loading ? (
+              <section className="card"><p className="muted">Checking…</p></section>
+            ) : showWizard ? (
+              <Navigate to="/setup" replace />
+            ) : (
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/admin" element={<AdminPage />} />
+                <Route path="/setup" element={<SetupRoute />} />
+                <Route path="/:card" element={<CardPage />} />
+              </Routes>
+            )}
           </main>
           <footer className="footer">
-            <span>ThePotatoGamer</span>
-            <Link to="/admin">Admin</Link>
+            <span>{config.identity.name || "Home"}</span>
+            {needsSetup ? null : <Link to="/admin">Admin</Link>}
           </footer>
         </div>
       </SiteMenu>
+    </>
+  );
+}
+
+export function App() {
+  return (
+    <AppProviders>
+      <SiteFrame />
     </AppProviders>
   );
 }

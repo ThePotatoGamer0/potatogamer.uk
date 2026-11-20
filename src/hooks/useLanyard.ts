@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { OWNER_DISCORD_ID } from "../../shared/site";
 import { isPresence, lookupPresence, LANYARD_WS, type LanyardPresence, type PresenceLookup } from "../lib/lanyard";
 
 export interface LanyardState {
@@ -13,7 +12,7 @@ function parseIds(idKey: string): string[] {
   return idKey ? idKey.split(",") : [];
 }
 
-export function useLanyard(ids: string[]): LanyardState {
+export function useLanyard(ids: string[], ownerId: string): LanyardState {
   const idKey = ids.join(",");
   const [users, setUsers] = useState<Record<string, LanyardPresence | null>>({});
   const [missing, setMissing] = useState<string[]>([]);
@@ -169,9 +168,9 @@ export function useLanyard(ids: string[]): LanyardState {
       users,
       missing,
       ready,
-      owner: users[OWNER_DISCORD_ID] ?? null,
+      owner: ownerId ? (users[ownerId] ?? null) : null,
     }),
-    [missing, ready, users],
+    [missing, ownerId, ready, users],
   );
 }
 

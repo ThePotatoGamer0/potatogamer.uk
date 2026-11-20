@@ -3,10 +3,10 @@ export const OG_CARDS = {
   activity: { kicker: "Live activity", heading: "Right now" },
   links: { kicker: "Links", heading: "Find me" },
   friends: { kicker: "Friends", heading: "People" },
-  interests: { kicker: "Interests", heading: "What I’m into" },
+  interests: { kicker: "Interests", heading: "Interests" },
   media: { kicker: "Media", heading: "On rotation" },
-  setup: { kicker: "PC setup", heading: "My Machine" },
-  homelab: { kicker: "Homelab", heading: "Raspberry Pi 5" },
+  setup: { kicker: "PC setup", heading: "Setup" },
+  homelab: { kicker: "Homelab", heading: "Homelab" },
   guestbook: { kicker: "Guestbook", heading: "Leave a note" },
 } as const;
 
@@ -36,6 +36,7 @@ export interface OgDocument {
   accent: string;
   picture: string | null;
   pictureKind: "avatar" | "poster" | null;
+  siteName: string;
 }
 
 const MARKS = new Set(['"', "“", "”", "„", "«", "»"]);
@@ -110,7 +111,7 @@ function renderOgBlock(doc: OgDocument): string {
   const url = escapeHtml(doc.url);
   const image = escapeHtml(doc.image);
   return `<!-- og:start -->
-    <meta property="og:site_name" content="potatogamer.uk" />
+    <meta property="og:site_name" content="${escapeHtml(doc.siteName)}" />
     <meta property="og:locale" content="en_GB" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="${title}" />

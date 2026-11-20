@@ -1,8 +1,20 @@
-# potatogamer.uk
+# Personal site
 
-Personal site for ThePotatoGamer. The homepage is a Material You bento grid with live Discord presence from Lanyard. Site copy, links, friends, and the guestbook are stored in Upstash Redis through Vercel Functions.
+A homepage you can run for more than one domain on the same server. Each domain has its own name, Discord presence, links, and guestbook. A new domain opens a setup page before the site is shown.
 
-## Scripts
+## Add a domain to this server
+
+Point the domain at this project, then open it in a browser.
+
+1. The first visit opens `/setup`.
+2. Choose a password, add a Discord user ID if you want live presence, then enter a display name and site name.
+3. Open `/admin` later with that password to change the quote, card titles, links, friends, media, and the password.
+
+The first person to finish setup owns that domain. The home domain is the exception: it keeps the site that was already saved, and its first login is the starting password below.
+
+`DISCORD_BOT_TOKEN` belongs to the server, not to a domain. Leave it alone unless you are running a separate copy.
+
+## Run your own copy
 
 ```bash
 npm install
@@ -10,27 +22,25 @@ npm run dev
 npm run build
 ```
 
-`npm run dev` serves the SPA and `/api/config`, `/api/guestbook`, `/api/discord`, and `/api/media` at http://localhost:5173.
+`npm run dev` serves the site and the API at http://localhost:5173. Copy `.env.example` to `.env.local` first.
 
-## Environment
-
-Copy `.env.example` to `.env.local`.
-
-- `ADMIN_PASSWORD` unlocks `/admin`, saving config, and deleting guestbook entries.
-- `DISCORD_BOT_TOKEN` is a server-only bot token. It loads avatars, and when Lanyard has no presence it reads status from a server the bot has joined. Enable the bot's Presence Intent in the Discord developer portal. Add the token on Vercel as a Secret. Do not prefix it with `VITE_`.
+- `PRIMARY_HOST` is the home domain, such as `potatogamer.uk` on this server. The starting password works only for that host, and the saved site is attached to it. Set this before the home domain is opened.
+- `ADMIN_PASSWORD` is the starting password for the home domain. After that domain saves a new password in settings, this one no longer unlocks it.
+- `KV_REST_API_URL` and `KV_REST_API_TOKEN`, or `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`, keep each domain’s settings. Without them, saves last only until the process restarts.
+- `DISCORD_BOT_TOKEN` is optional. It loads avatars, and reads a status when live presence has nothing, for people who share a server with the bot. Enable the bot’s Presence Intent. Do not prefix it with `VITE_`.
 - `DISCORD_GUILD_ID` is optional. Set it when the bot is in more than one server and statuses should come from one of them.
-- `TMDB_API_KEY` is a server-only TMDB key. The admin page uses it to search, then saves the chosen poster with the site config. The homepage does not call TMDB. Add it on Vercel as a Secret. Do not prefix it with `VITE_`.
-- `KV_REST_API_URL` and `KV_REST_API_TOKEN`, or `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+- `TMDB_API_KEY` and `STEAMGRIDDB_API_KEY` are optional search keys for the settings page. The homepage uses the artwork saved with the site.
 
-If Redis isn’t configured, the API keeps config and guestbook entries in process memory so local development still runs. Set the variables on Vercel before relying on them in production.
+Set the password, home domain, and Redis values on the host before relying on them. Store secrets as secrets, not as values that ship to the browser.
 
 ## Routes
 
 - `/` homepage
-- `/admin` owner dashboard
+- `/setup` first-visit setup for a domain that has no saved site, and the PC card after that
+- `/admin` settings
 - `/api/config`
+- `/api/setup`
+- `/api/password`
 - `/api/guestbook`
 - `/api/discord`
 - `/api/media`
-
-Vercel rewrites non-file, non-API paths to `index.html` so `/admin` stays extensionless.

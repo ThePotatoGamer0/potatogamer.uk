@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
-import { ICON_LABELS, ICON_NAMES, MEDIA_KINDS, SPEC_ICONS, mediaArt, normalizeConfig, type FriendConfig, type GuestbookEntry, type KvRow, type MediaKind, type MediaPick, type SiteConfig, type SiteLink, type SpecIcon, type SpecRow } from "../../shared/site";
+import { ICON_LABELS, ICON_NAMES, MEDIA_KINDS, SPEC_ICONS, mediaArt, normalizeConfig, passwordIssue, type FriendConfig, type GuestbookEntry, type KvRow, type MediaKind, type MediaPick, type SiteConfig, type SiteLink, type SpecIcon, type SpecRow } from "../../shared/site";
 import { useConfig } from "../context/AppProviders";
 import { ApiError, api } from "../lib/api";
 import { imageFileFromClipboard, imageFileToDataUri } from "../lib/interestImage";
@@ -25,6 +25,10 @@ export function AdminPage() {
   const [unlocking, setUnlocking] = useState(false);
   const [entries, setEntries] = useState<GuestbookEntry[]>([]);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [nextPassword, setNextPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     const saved = readAdminPassword();
@@ -136,6 +140,43 @@ export function AdminPage() {
     }
   }
 
+  async function changePassword(event: FormEvent) {
+    event.preventDefault();
+    const issue = passwordIssue(nextPassword, confirmPassword);
+    if (issue) {
+      show("err", issue);
+      return;
+    }
+    const secret = readAdminPassword();
+    if (!secret) {
+      setUnlocked(false);
+      return;
+    }
+    if (changingPassword) return;
+    setChangingPassword(true);
+    try {
+      await api("/api/password", {
+        method: "POST",
+        password: secret,
+        body: JSON.stringify({ current: currentPassword, next: nextPassword, confirm: confirmPassword }),
+      });
+      writeAdminPassword(nextPassword);
+      setCurrentPassword("");
+      setNextPassword("");
+      setConfirmPassword("");
+      show("ok", "Password changed.");
+    } catch (error) {
+      if (error instanceof ApiError && (error.status === 401 || error.status === 503)) {
+        clearAdminPassword();
+        setUnlocked(false);
+        setDraft(null);
+      }
+      show("err", error instanceof Error ? error.message : "Could not change the password.");
+    } finally {
+      setChangingPassword(false);
+    }
+  }
+
   function lock() {
     clearAdminPassword();
     setUnlocked(false);
@@ -179,6 +220,117 @@ export function AdminPage() {
           {storage === "memory" ? (
             <p className="banner">Saves won’t last past a restart.</p>
           ) : null}
+
+          <section className="card">
+            <h2>Site</h2>
+            <div className="stack">
+              <label className="field">
+                <span>Display name</span>
+                <input
+                  value={draft.identity.name}
+                  maxLength={40}
+                  onChange={(event) => setDraft({ ...draft, identity: { ...draft.identity, name: event.target.value } })}
+                />
+              </label>
+              <label className="field">
+                <span>Discord user ID</span>
+                <input
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={draft.identity.discordId}
+                  onChange={(event) => setDraft({ ...draft, identity: { ...draft.identity, discordId: event.target.value } })}
+                />
+              </label>
+              <label className="field">
+                <span>Site name</span>
+                <input
+                  value={draft.identity.siteName}
+                  maxLength={80}
+                  onChange={(event) => setDraft({ ...draft, identity: { ...draft.identity, siteName: event.target.value } })}
+                />
+              </label>
+              <label className="field">
+                <span>Interests title</span>
+                <input
+                  value={draft.identity.interestsTitle}
+                  maxLength={40}
+                  onChange={(event) => setDraft({ ...draft, identity: { ...draft.identity, interestsTitle: event.target.value } })}
+                />
+              </label>
+              <label className="field">
+                <span>PC setup label</span>
+                <input
+                  value={draft.identity.setupKicker}
+                  maxLength={40}
+                  onChange={(event) => setDraft({ ...draft, identity: { ...draft.identity, setupKicker: event.target.value } })}
+                />
+              </label>
+              <label className="field">
+                <span>PC setup title</span>
+                <input
+                  value={draft.identity.setupTitle}
+                  maxLength={40}
+                  onChange={(event) => setDraft({ ...draft, identity: { ...draft.identity, setupTitle: event.target.value } })}
+                />
+              </label>
+              <label className="field">
+                <span>Homelab label</span>
+                <input
+                  value={draft.identity.homelabKicker}
+                  maxLength={40}
+                  onChange={(event) => setDraft({ ...draft, identity: { ...draft.identity, homelabKicker: event.target.value } })}
+                />
+              </label>
+              <label className="field">
+                <span>Homelab title</span>
+                <input
+                  value={draft.identity.homelabTitle}
+                  maxLength={40}
+                  onChange={(event) => setDraft({ ...draft, identity: { ...draft.identity, homelabTitle: event.target.value } })}
+                />
+              </label>
+            </div>
+          </section>
+
+          <section className="card">
+            <h2>Password</h2>
+            <p className="muted">Replaces the password for this domain.</p>
+            <form className="stack" onSubmit={(event) => void changePassword(event)}>
+              <label className="field">
+                <span>Current password</span>
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
+                  required
+                />
+              </label>
+              <label className="field">
+                <span>New password</span>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={nextPassword}
+                  onChange={(event) => setNextPassword(event.target.value)}
+                  required
+                />
+              </label>
+              <label className="field">
+                <span>Confirm new password</span>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  required
+                />
+              </label>
+              <button className="btn tonal" type="submit" disabled={changingPassword}>
+                {changingPassword ? "Saving…" : "Change password"}
+              </button>
+            </form>
+          </section>
 
           <section className="card">
             <h2>Color</h2>

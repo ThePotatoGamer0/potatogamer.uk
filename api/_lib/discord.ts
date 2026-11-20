@@ -1,5 +1,5 @@
-import { OWNER_DISCORD_ID } from "../../shared/site.js";
-import { readConfig } from "./store.js";
+import { isDiscordId } from "../../shared/site.js";
+import { readSite } from "./store.js";
 
 const SNOWFLAKE = /^\d{17,20}$/;
 const TTL_MS = 15 * 60 * 1000;
@@ -32,10 +32,10 @@ export async function discordProfiles(ids: string[]): Promise<{
   return { configured: true, users: Object.fromEntries(entries) };
 }
 
-export async function watchedIds(): Promise<string[]> {
-  const config = await readConfig();
+export async function watchedIds(host: string): Promise<string[]> {
+  const { config } = await readSite(host);
   const ids = new Set<string>();
-  if (SNOWFLAKE.test(OWNER_DISCORD_ID)) ids.add(OWNER_DISCORD_ID);
+  if (isDiscordId(config.identity.discordId)) ids.add(config.identity.discordId);
   for (const friend of config.friends) {
     if (SNOWFLAKE.test(friend.discordId)) ids.add(friend.discordId);
   }

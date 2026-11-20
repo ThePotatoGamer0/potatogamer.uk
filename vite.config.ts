@@ -60,6 +60,8 @@ const API_MODULES: Record<string, string> = {
   "/api/guestbook": "/api/guestbook.ts",
   "/api/discord": "/api/discord.ts",
   "/api/media": "/api/media.ts",
+  "/api/setup": "/api/setup.ts",
+  "/api/password": "/api/password.ts",
 };
 
 async function serveOgImage(server: ViteDevServer, req: IncomingMessage, res: ServerResponse) {

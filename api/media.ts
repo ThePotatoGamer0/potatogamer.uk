@@ -6,7 +6,7 @@ import { searchTitles } from "./_lib/tmdb.js";
 export async function GET(request: Request): Promise<Response> {
   let kind: MediaKind | null = null;
   try {
-    const denied = requireAuth(request);
+    const denied = await requireAuth(request);
     if (denied) return denied;
 
     const url = new URL(request.url);

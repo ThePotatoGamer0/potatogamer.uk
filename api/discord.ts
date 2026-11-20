@@ -1,5 +1,6 @@
 import { discordProfiles, watchedIds } from "./_lib/discord.js";
 import { loadStatuses } from "./_lib/discordPresence.js";
+import { requestHost } from "./_lib/host.js";
 import { json } from "./_lib/http.js";
 
 const SNOWFLAKE = /^\d{17,20}$/;
@@ -7,7 +8,7 @@ const SNOWFLAKE = /^\d{17,20}$/;
 export async function GET(request: Request): Promise<Response> {
   try {
     const url = new URL(request.url);
-    const ids = await requestedIds(url);
+    const ids = await requestedIds(url, request);
     if (url.searchParams.get("part") === "statuses") return json({ statuses: await statuses(ids) });
     return json(await discordProfiles(ids));
   } catch (error) {
@@ -22,8 +23,8 @@ async function statuses(ids: string[]): Promise<Record<string, { status: string;
   return loadStatuses(ids, token);
 }
 
-async function requestedIds(url: URL): Promise<string[]> {
-  const allowed = new Set(await watchedIds());
+async function requestedIds(url: URL, request: Request): Promise<string[]> {
+  const allowed = new Set(await watchedIds(requestHost(request)));
   const ids = new Set<string>();
   for (const id of (url.searchParams.get("ids") ?? "").split(",")) {
     const trimmed = id.trim();

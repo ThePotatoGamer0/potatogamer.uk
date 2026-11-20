@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { OWNER_DISCORD_ID, type KvRow } from "../../../shared/site";
-import { useDiscordProfiles, usePresence } from "../../context/AppProviders";
+import { isDiscordId, type KvRow } from "../../../shared/site";
+import { useConfig, useDiscordProfiles, usePresence } from "../../context/AppProviders";
 import { displayName, kvString } from "../../lib/discord";
 import { withSpeechMarks } from "../../lib/format";
 import { STATUS_LABEL } from "../../lib/lanyard";
@@ -16,11 +16,14 @@ export function ProfileCard({
   interests: KvRow[];
   onInterest: (id: string) => void;
 }) {
+  const { config } = useConfig();
+  const ownerId = isDiscordId(config.identity.discordId) ? config.identity.discordId : "";
   const { owner, ready } = usePresence();
   const { users: profiles, statuses } = useDiscordProfiles();
-  const bot = statuses[OWNER_DISCORD_ID];
-  const user = owner?.discord_user ?? profiles[OWNER_DISCORD_ID] ?? undefined;
-  const name = displayName(user);
+  const bot = ownerId ? statuses[ownerId] : undefined;
+  const user = ownerId ? (owner?.discord_user ?? profiles[ownerId] ?? undefined) : undefined;
+  const name = displayName(user, config.identity.name || "Home");
+  const initial = name.trim().charAt(0).toUpperCase() || "H";
   const quote = withSpeechMarks(kvString(owner?.kv, "quote") || quoteFallback);
   const status = owner?.discord_status ?? bot?.status ?? "offline";
   const quoteRef = useRef<HTMLQuoteElement>(null);
@@ -47,16 +50,18 @@ export function ProfileCard({
           <Avatar user={user} status={status} />
         ) : (
           <div className="avatar-stack lg" aria-hidden="true">
-            <span className="avatar monogram">{ready ? "P" : ""}</span>
+            <span className="avatar monogram">{!ownerId || ready ? initial : ""}</span>
           </div>
         )}
         <div className="profile-id">
           <h1 key={name} className="fade-swap">{name}</h1>
-          <p className="handle">{user ? `@${user.username}` : "@thepotatogamer"}</p>
-          <p className={`status-pill ${status}`}>
-            <span className={`status-dot inline ${status}`} aria-hidden="true" />
-            {owner || bot || ready ? STATUS_LABEL[status] : "Checking"}
-          </p>
+          {user?.username ? <p className="handle">@{user.username}</p> : null}
+          {ownerId ? (
+            <p className={`status-pill ${status}`}>
+              <span className={`status-dot inline ${status}`} aria-hidden="true" />
+              {owner || bot || ready ? STATUS_LABEL[status] : "Checking"}
+            </p>
+          ) : null}
         </div>
       </div>
       <blockquote ref={quoteRef} className={roomy ? "quote roomy" : "quote"}>

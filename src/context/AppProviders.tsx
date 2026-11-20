@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 import { cardFromPath } from "../../shared/og";
-import { defaultConfig, OWNER_DISCORD_ID, type SiteConfig, type StorageMode } from "../../shared/site";
+import { defaultConfig, isDiscordId, type SiteConfig, type StorageMode } from "../../shared/site";
 import { useLanyard, type LanyardState } from "../hooks/useLanyard";
 import { api } from "../lib/api";
 import { avatarUrl, botStatuses, kvString, type BotStatus } from "../lib/discord";
@@ -12,6 +12,7 @@ import { ThemeProvider, useTheme } from "../theme/ThemeProvider";
 interface ConfigResponse {
   config: SiteConfig;
   storage: StorageMode;
+  needsSetup?: boolean;
 }
 
 interface ConfigContextValue {
@@ -19,6 +20,8 @@ interface ConfigContextValue {
   setConfig: (config: SiteConfig) => void;
   storage: StorageMode | null;
   loading: boolean;
+  needsSetup: boolean;
+  setNeedsSetup: (needsSetup: boolean) => void;
   error: string | null;
   reload: () => Promise<void>;
 }
@@ -61,22 +64,25 @@ function ConfigProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<SiteConfig>(defaultConfig);
   const [storage, setStorage] = useState<StorageMode | null>(null);
   const [loading, setLoading] = useState(true);
+  const [needsSetup, setNeedsSetup] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const reload = useCallback(async () => {
-    const data = await api<ConfigResponse>("/api/config");
+  const apply = useCallback((data: ConfigResponse) => {
     setConfig(data.config);
     setStorage(data.storage);
+    setNeedsSetup(data.needsSetup === true);
     setError(null);
   }, []);
+
+  const reload = useCallback(async () => {
+    apply(await api<ConfigResponse>("/api/config"));
+  }, [apply]);
 
   useEffect(() => {
     let cancelled = false;
     api<ConfigResponse>("/api/config")
       .then((data) => {
-        if (cancelled) return;
-        setConfig(data.config);
-        setStorage(data.storage);
+        if (!cancelled) apply(data);
       })
       .catch((caught: unknown) => {
         if (cancelled) return;
@@ -88,11 +94,11 @@ function ConfigProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [apply]);
 
   const value = useMemo(
-    () => ({ config, setConfig, storage, loading, error, reload }),
-    [config, error, loading, reload, storage],
+    () => ({ config, setConfig, storage, loading, needsSetup, setNeedsSetup, error, reload }),
+    [config, error, loading, needsSetup, reload, storage],
   );
 
   return <ConfigContext.Provider value={value}>{children}</ConfigContext.Provider>;
@@ -100,20 +106,23 @@ function ConfigProvider({ children }: { children: ReactNode }) {
 
 function LanyardBridge({ children }: { children: ReactNode }) {
   const { config } = useConfig();
+  const ownerId = isDiscordId(config.identity.discordId) ? config.identity.discordId : "";
   const ids = useMemo(() => {
-    const unique = new Set<string>([OWNER_DISCORD_ID]);
+    const unique = new Set<string>();
+    if (ownerId) unique.add(ownerId);
     for (const friend of config.friends) {
-      if (/^\d{17,20}$/.test(friend.discordId)) unique.add(friend.discordId);
+      if (isDiscordId(friend.discordId)) unique.add(friend.discordId);
     }
     return [...unique];
-  }, [config.friends]);
-  const lanyard = useLanyard(ids);
+  }, [config.friends, ownerId]);
+  const lanyard = useLanyard(ids, ownerId);
   const { pathname } = useLocation();
   const quote = withSpeechMarks(kvString(lanyard.owner?.kv, "quote").replace(/\s+/g, " "));
+  const siteName = config.identity.siteName || "Home";
   useEffect(() => {
     if (cardFromPath(pathname)) return;
-    document.title = quote ? `${quote} - ThePotatoGamer` : "ThePotatoGamer";
-  }, [pathname, quote]);
+    document.title = quote ? `${quote} - ${siteName}` : siteName;
+  }, [pathname, quote, siteName]);
 
   return (
     <LanyardContext.Provider value={lanyard}>
@@ -123,6 +132,8 @@ function LanyardBridge({ children }: { children: ReactNode }) {
 }
 
 function DiscordBridge({ children }: { children: ReactNode }) {
+  const { config } = useConfig();
+  const ownerId = isDiscordId(config.identity.discordId) ? config.identity.discordId : "";
   const { registerAvatar } = useTheme();
   const { owner, ready, missing } = usePresence();
   const [profiles, setProfiles] = useState<DiscordDirectory>(EMPTY_DIRECTORY);
@@ -165,7 +176,7 @@ function DiscordBridge({ children }: { children: ReactNode }) {
     };
   }, [missingKey, ready]);
 
-  const ownerUser = owner?.discord_user ?? profiles.users[OWNER_DISCORD_ID] ?? null;
+  const ownerUser = ownerId ? (owner?.discord_user ?? profiles.users[ownerId] ?? null) : null;
   const ownerAvatar = ownerUser ? avatarUrl(ownerUser, 128) : null;
 
   useEffect(() => {
@@ -174,7 +185,11 @@ function DiscordBridge({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const link = document.querySelector<HTMLLinkElement>("#favicon");
-    if (!link || !ownerUser?.avatar) return;
+    if (!link) return;
+    if (!ownerUser?.avatar) {
+      link.removeAttribute("href");
+      return;
+    }
     link.href = `https://cdn.discordapp.com/avatars/${ownerUser.id}/${ownerUser.avatar}.png?size=128`;
     link.type = "image/png";
   }, [ownerUser]);

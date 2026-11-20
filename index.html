@@ -3,43 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ThePotatoGamer</title>
-    <meta name="description" content="All of ThePotatoGamer" />
+    <title>Home</title>
+    <meta name="description" content="All of Home" />
     <meta name="theme-color" content="#E39B12" />
     <!-- og:start -->
-    <meta property="og:site_name" content="potatogamer.uk" />
+    <meta property="og:site_name" content="Home" />
     <meta property="og:locale" content="en_GB" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="ThePotatoGamer" />
-    <meta property="og:description" content="All of ThePotatoGamer" />
-    <meta property="og:url" content="https://potatogamer.uk/" />
-    <meta property="og:image" content="https://potatogamer.uk/api/og" />
+    <meta property="og:title" content="Home" />
+    <meta property="og:description" content="All of Home" />
+    <meta property="og:url" content="/" />
+    <meta property="og:image" content="/api/og" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="ThePotatoGamer" />
+    <meta property="og:image:alt" content="Home" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="ThePotatoGamer" />
-    <meta name="twitter:description" content="All of ThePotatoGamer" />
-    <meta name="twitter:image" content="https://potatogamer.uk/api/og" />
-    <link rel="canonical" href="https://potatogamer.uk/" />
+    <meta name="twitter:title" content="Home" />
+    <meta name="twitter:description" content="All of Home" />
+    <meta name="twitter:image" content="/api/og" />
+    <link rel="canonical" href="/" />
     <!-- og:end -->
     <link id="favicon" rel="icon" />
-    <script>
-      (function () {
-        var link = document.getElementById("favicon");
-        fetch("https://api.lanyard.rest/v1/users/639906782658953256")
-          .then(function (response) {
-            return response.json();
-          })
-          .then(function (body) {
-            var user = body && body.data && body.data.discord_user;
-            if (!link || !user || !user.avatar) return;
-            link.href = "https://cdn.discordapp.com/avatars/" + user.id + "/" + user.avatar + ".png?size=128";
-            link.type = "image/png";
-          })
-          .catch(function () {});
-      })();
-    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

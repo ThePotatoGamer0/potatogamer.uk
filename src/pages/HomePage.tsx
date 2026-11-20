@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { cardFromHash, type OgCard } from "../../shared/og";
+import { isDiscordId } from "../../shared/site";
 import { ActivityCard } from "../components/cards/ActivityCard";
 import { FriendsCard } from "../components/cards/FriendsCard";
 import { GuestbookCard } from "../components/cards/GuestbookCard";
@@ -13,6 +14,11 @@ import { useConfig } from "../context/AppProviders";
 
 export function HomePage({ focus }: { focus?: OgCard }) {
   const { config, error } = useConfig();
+  const showActivity = isDiscordId(config.identity.discordId);
+  const showLinks = config.links.length > 0;
+  const showFriends = config.friends.length > 0;
+  const showSetup = config.setup.length > 0;
+  const showHomelab = config.homelab.length > 0;
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const hashCard = useHashCard();
   const cardId = focus ?? hashCard;
@@ -43,53 +49,67 @@ export function HomePage({ focus }: { focus?: OgCard }) {
   return (
     <div className="bento">
       {error ? <p className="banner span-12">Couldn’t load the latest version of the site.</p> : null}
-      <div className="span-5">
+      <div className={showActivity ? "span-5" : "span-12"}>
         <CardBoundary title="Profile">
           <ProfileCard quoteFallback={config.quote} interests={config.interests} onInterest={setHighlightId} />
         </CardBoundary>
       </div>
-      <div className="span-7">
-        <CardBoundary title="Live activity">
-          <ActivityCard />
-        </CardBoundary>
-      </div>
-      <div className="span-4">
-        <CardBoundary title="Links">
-          <LinksCard links={config.links} />
-        </CardBoundary>
-      </div>
-      <div className="span-8 friends-slot">
-        <CardBoundary title="Friends">
-          <FriendsCard friends={config.friends} />
-        </CardBoundary>
-      </div>
-      <div className="span-12">
-        <CardBoundary title="Interests">
-          <KvCard
-            id="interests"
-            kicker="Interests"
-            title="What I’m into"
-            rows={config.interests}
-            empty="No interests yet."
-            highlightId={highlightId}
-          />
-        </CardBoundary>
-      </div>
-      <div className="span-12">
-        <CardBoundary title="Media">
-          <MediaCard />
-        </CardBoundary>
-      </div>
-      <div className="span-6">
-        <CardBoundary title="PC setup">
-          <SetupCard id="setup" kicker="PC setup" title="My Machine" rows={config.setup} />
-        </CardBoundary>
-      </div>
-      <div className="span-6">
-        <CardBoundary title="Homelab">
-          <SetupCard id="homelab" kicker="Homelab" title="Raspberry Pi 5" rows={config.homelab} />
-        </CardBoundary>
-      </div>
+      {showActivity ? (
+        <div className="span-7">
+          <CardBoundary title="Live activity">
+            <ActivityCard />
+          </CardBoundary>
+        </div>
+      ) : null}
+      {showLinks ? (
+        <div className={showFriends ? "span-4" : "span-12"}>
+          <CardBoundary title="Links">
+            <LinksCard links={config.links} />
+          </CardBoundary>
+        </div>
+      ) : null}
+      {showFriends ? (
+        <div className={showLinks ? "span-8 friends-slot" : "span-12 friends-slot"}>
+          <CardBoundary title="Friends">
+            <FriendsCard friends={config.friends} />
+          </CardBoundary>
+        </div>
+      ) : null}
+      {config.interests.length > 0 ? (
+        <div className="span-12">
+          <CardBoundary title="Interests">
+            <KvCard
+              id="interests"
+              kicker="Interests"
+              title={config.identity.interestsTitle}
+              rows={config.interests}
+              empty="No interests yet."
+              highlightId={highlightId}
+            />
+          </CardBoundary>
+        </div>
+      ) : null}
+      {config.media.length > 0 ? (
+        <div className="span-12">
+          <CardBoundary title="Media">
+            <MediaCard />
+          </CardBoundary>
+        </div>
+      ) : null}
+      {showSetup ? (
+        <div className={showHomelab ? "span-6" : "span-12"}>
+          <CardBoundary title="PC setup">
+            <SetupCard id="setup" kicker={config.identity.setupKicker} title={config.identity.setupTitle} rows={config.setup} />
+          </CardBoundary>
+        </div>
+      ) : null}
+      {showHomelab ? (
+        <div className={showSetup ? "span-6" : "span-12"}>
+          <CardBoundary title="Homelab">
+            <SetupCard id="homelab" kicker={config.identity.homelabKicker} title={config.identity.homelabTitle} rows={config.homelab} />
+          </CardBoundary>
+        </div>
+      ) : null}
       <div className="span-12">
         <CardBoundary title="Guestbook">
           <GuestbookCard />

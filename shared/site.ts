@@ -1,5 +1,3 @@
-export const OWNER_DISCORD_ID = "639906782658953256";
-
 export const ICON_NAMES = [
   "discord",
   "github",
@@ -134,7 +132,19 @@ export interface SiteColor {
   seed: string;
 }
 
+export interface SiteIdentity {
+  name: string;
+  discordId: string;
+  siteName: string;
+  interestsTitle: string;
+  setupKicker: string;
+  setupTitle: string;
+  homelabKicker: string;
+  homelabTitle: string;
+}
+
 export interface SiteConfig {
+  identity: SiteIdentity;
   quote: string;
   interests: KvRow[];
   setup: SpecRow[];
@@ -159,65 +169,28 @@ const ROW_ID = /^[a-zA-Z0-9_-]{8,80}$/;
 
 export const DEFAULT_SEED = "#E39B12";
 
+export const NEUTRAL_IDENTITY: SiteIdentity = {
+  name: "Home",
+  discordId: "",
+  siteName: "Home",
+  interestsTitle: "Interests",
+  setupKicker: "PC setup",
+  setupTitle: "Setup",
+  homelabKicker: "Homelab",
+  homelabTitle: "Homelab",
+};
+
+export const PASSWORD_MIN = 8;
+export const PASSWORD_MAX = 200;
+
 export const defaultConfig: SiteConfig = {
+  identity: { ...NEUTRAL_IDENTITY },
   color: { source: "auto", seed: DEFAULT_SEED },
-  quote: "Dual-booting the day and homelabbing the night.",
-  interests: [
-    {
-      id: "interest-coding",
-      label: "Coding",
-      value: "TypeScript, web toys, and whatever the homelab needs next",
-      image: "",
-    },
-    {
-      id: "interest-linux",
-      label: "Linux",
-      value: "CachyOS on the daily driver",
-      image: "",
-    },
-    {
-      id: "interest-homelab",
-      label: "Homelabbing",
-      value: "A Raspberry Pi and a pile of self-hosted services",
-      image: "",
-    },
-    {
-      id: "interest-gaming",
-      label: "Gaming",
-      value: "Comfort games and late-night queues",
-      image: "",
-    },
-  ],
-  setup: [
-    { id: "setup-cpu", label: "CPU", value: "Ryzen 5 7600", detail: "", icon: "cpu" },
-    { id: "setup-gpu", label: "GPU", value: "GeForce RTX 3060", detail: "", icon: "gpu" },
-    { id: "setup-memory", label: "Memory", value: "32GB", detail: "6000MT/s", icon: "memory-stick" },
-    { id: "setup-storage-cachy", label: "Storage", value: "2 TB NVMe", detail: "CachyOS", icon: "hard-drive" },
-    { id: "setup-storage-windows", label: "Storage", value: "512 GB NVMe", detail: "Windows", icon: "hard-drive" },
-    { id: "setup-board", label: "Motherboard", value: "A620M Pro RS WiFi", detail: "", icon: "circuit-board" },
-  ],
-  homelab: [
-    { id: "homelab-apu", label: "APU", value: "BCM2712", detail: "Cortex-A76", icon: "cpu" },
-    { id: "homelab-gpu", label: "GPU", value: "VideoCore VII", detail: "", icon: "gpu" },
-    { id: "homelab-memory", label: "Memory", value: "16GB", detail: "", icon: "memory-stick" },
-    { id: "homelab-storage", label: "Storage", value: "1 TB NVMe", detail: "Raspberry Pi OS Lite", icon: "hard-drive" },
-  ],
-  links: [
-    {
-      id: "link-discord",
-      title: "Discord",
-      handle: "thepotatogamer",
-      url: "https://discord.com/users/639906782658953256",
-      icon: "discord",
-    },
-    {
-      id: "link-github",
-      title: "GitHub",
-      handle: "thepotatogamer0",
-      url: "https://github.com/thepotatogamer0",
-      icon: "github",
-    },
-  ],
+  quote: "",
+  interests: [],
+  setup: [],
+  homelab: [],
+  links: [],
   friends: [],
   media: [],
 };
@@ -225,6 +198,18 @@ export const defaultConfig: SiteConfig = {
 export function cleanText(value: unknown, max: number): string {
   if (typeof value !== "string") return "";
   return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").trim().slice(0, max);
+}
+
+export function isDiscordId(value: string): boolean {
+  return DISCORD_ID.test(value);
+}
+
+export function passwordIssue(password: string, confirm: string): string | null {
+  if (password.length < PASSWORD_MIN || password.length > PASSWORD_MAX) {
+    return `Password must be ${PASSWORD_MIN}–${PASSWORD_MAX} characters.`;
+  }
+  if (password !== confirm) return "Those passwords don’t match.";
+  return null;
 }
 
 export function isHttpUrl(value: string): boolean {
@@ -251,34 +236,6 @@ function cleanId(value: unknown): string {
 function isIcon(value: unknown): value is IconName {
   return typeof value === "string" && (ICON_NAMES as readonly string[]).includes(value);
 }
-
-const LEGACY_SETUPS = new Set([
-  [
-    "Main Rig|Dual-boot Windows 11 & CachyOS",
-    "Homelab|Raspberry Pi 5 16GB + 1TB NVMe on Raspberry Pi OS Lite",
-    "Editor|Cursor",
-    "Shell|zsh",
-  ].join("||"),
-  [
-    "CPU|Ryzen 5 7600",
-    "GPU|GeForce RTX 3060",
-    "Memory|32 GB",
-    "Storage|2 TB NVMe · 512 GB NVMe",
-    "Board|A620M Pro RS WiFi",
-    "OS|CachyOS & Windows 11",
-  ].join("||"),
-  [
-    "CPU|Ryzen 5 7600",
-    "GPU|GeForce RTX 3060",
-    "Memory|32GB 6000MT/s",
-    "Storage|2 TB NVMe",
-    "Storage|512 GB NVMe",
-    "Motherboard|A620M Pro RS WiFi",
-  ].join("||"),
-  ["Board|Raspberry Pi 5", "Memory|16GB", "Storage|1 TB NVMe"].join("||"),
-  ["APU|BCM2712", "Board|Raspberry Pi 5", "Memory|16GB", "Storage|1 TB NVMe"].join("||"),
-  ["APU|BCM2712", "GPU|VideoCore VII", "Board|Raspberry Pi 5", "Memory|16GB", "Storage|1 TB NVMe"].join("||"),
-]);
 
 const SPEC_ICON_ALIASES: Record<string, SpecIcon> = {
   cpu: "cpu",
@@ -307,8 +264,8 @@ function normalizeSpecIcon(value: unknown, label: string): SpecIcon {
   return specIconFor(label);
 }
 
-function takeSpecs(value: unknown, limit: number, fallback: SpecRow[], replaceLegacy = false): SpecRow[] {
-  if (!Array.isArray(value)) return fallback;
+function takeSpecs(value: unknown, limit: number): SpecRow[] {
+  if (!Array.isArray(value)) return [];
   const rows: SpecRow[] = [];
   for (const item of value) {
     if (!item || typeof item !== "object") continue;
@@ -325,13 +282,12 @@ function takeSpecs(value: unknown, limit: number, fallback: SpecRow[], replaceLe
     });
     if (rows.length >= limit) break;
   }
-  const signature = rows.map((row) => `${row.label}|${row.value}`).join("||");
-  return replaceLegacy && LEGACY_SETUPS.has(signature) ? fallback : rows;
+  return rows;
 }
 
 function takeRows(value: unknown, limit: number, mode: "read" | "write"): { ok: true; items: KvRow[] } | { ok: false; error: string } {
   if (!Array.isArray(value)) {
-    if (mode === "read") return { ok: true, items: defaultConfig.interests };
+    if (mode === "read") return { ok: true, items: [] };
     return { ok: false, error: "Interests must be a list." };
   }
   const rows: KvRow[] = [];
@@ -392,6 +348,8 @@ export function normalizeConfig(input: unknown, mode: "read" | "write"): ConfigR
   }
 
   const source = input as Partial<SiteConfig>;
+  const identity = normalizeIdentity(source.identity, mode);
+  if (!identity.ok) return identity;
   const links = normalizeLinks(source.links, mode);
   if (!links.ok) return links;
   const friends = normalizeFriends(source.friends, mode);
@@ -399,21 +357,84 @@ export function normalizeConfig(input: unknown, mode: "read" | "write"): ConfigR
   const media = normalizeMedia(source.media, mode);
   if (!media.ok) return media;
   const interests = source.interests === undefined
-    ? { ok: true as const, items: defaultConfig.interests }
+    ? { ok: true as const, items: [] }
     : takeRows(source.interests, 24, mode);
   if (!interests.ok) return interests;
 
   return {
     ok: true,
     config: {
-      quote: source.quote === undefined ? defaultConfig.quote : cleanText(source.quote, 280),
+      identity: identity.identity,
+      quote: source.quote === undefined ? "" : cleanText(source.quote, 280),
       interests: interests.items,
-      setup: takeSpecs(source.setup, 24, defaultConfig.setup, true),
-      homelab: takeSpecs(source.homelab, 24, defaultConfig.homelab, true),
+      setup: takeSpecs(source.setup, 24),
+      homelab: takeSpecs(source.homelab, 24),
       links: links.items,
       friends: friends.items,
       media: media.items,
       color: normalizeColor(source.color),
+    },
+  };
+}
+
+function identityText(value: unknown, fallback: string, max: number): string {
+  if (value === undefined) return fallback;
+  return cleanText(value, max) || fallback;
+}
+
+function normalizeIdentity(
+  value: unknown,
+  mode: "read" | "write",
+): { ok: true; identity: SiteIdentity } | { ok: false; error: string } {
+  const record = value && typeof value === "object" ? (value as Partial<SiteIdentity>) : {};
+  const discordId = cleanText(record.discordId, 24);
+  if (discordId && !DISCORD_ID.test(discordId)) {
+    if (mode === "write") return { ok: false, error: "Discord ID must be a 17–20 digit number." };
+  }
+  const name = identityText(record.name, NEUTRAL_IDENTITY.name, 40);
+  if (mode === "write" && !cleanText(record.name, 40)) {
+    return { ok: false, error: "A display name is required." };
+  }
+  return {
+    ok: true,
+    identity: {
+      name,
+      discordId: DISCORD_ID.test(discordId) ? discordId : "",
+      siteName: identityText(record.siteName, NEUTRAL_IDENTITY.siteName, 80),
+      interestsTitle: identityText(record.interestsTitle, NEUTRAL_IDENTITY.interestsTitle, 40),
+      setupKicker: identityText(record.setupKicker, NEUTRAL_IDENTITY.setupKicker, 40),
+      setupTitle: identityText(record.setupTitle, NEUTRAL_IDENTITY.setupTitle, 40),
+      homelabKicker: identityText(record.homelabKicker, NEUTRAL_IDENTITY.homelabKicker, 40),
+      homelabTitle: identityText(record.homelabTitle, NEUTRAL_IDENTITY.homelabTitle, 40),
+    },
+  };
+}
+
+export function buildSetupConfig(input: {
+  name: unknown;
+  discordId: unknown;
+  siteName: unknown;
+  quote: unknown;
+  siteNameFallback: string;
+}): ConfigResult {
+  const name = cleanText(input.name, 40);
+  if (!name) return { ok: false, error: "A display name is required." };
+  const discordId = cleanText(input.discordId, 24);
+  if (discordId && !DISCORD_ID.test(discordId)) {
+    return { ok: false, error: "Discord ID must be a 17–20 digit number." };
+  }
+  const siteName = cleanText(input.siteName, 80) || cleanText(input.siteNameFallback, 80) || NEUTRAL_IDENTITY.siteName;
+  return {
+    ok: true,
+    config: {
+      ...defaultConfig,
+      quote: cleanText(input.quote, 280),
+      identity: {
+        ...NEUTRAL_IDENTITY,
+        name,
+        discordId,
+        siteName,
+      },
     },
   };
 }
@@ -429,9 +450,9 @@ function normalizeLinks(
   value: unknown,
   mode: "read" | "write",
 ): { ok: true; items: SiteLink[] } | { ok: false; error: string } {
-  if (value === undefined) return { ok: true, items: defaultConfig.links };
+  if (value === undefined) return { ok: true, items: [] };
   if (!Array.isArray(value)) {
-    if (mode === "read") return { ok: true, items: defaultConfig.links };
+    if (mode === "read") return { ok: true, items: [] };
     return { ok: false, error: "Links must be a list." };
   }
 

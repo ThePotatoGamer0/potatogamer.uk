@@ -1,12 +1,16 @@
 import { validateGuestbook, type GuestbookEntry } from "../shared/site.js";
+import { requestHost } from "./_lib/host.js";
 import { HttpError, json, readJson, requireAuth } from "./_lib/http.js";
-import { clientKey, readEntries, storageMode, takeRateLimit, writeEntries } from "./_lib/store.js";
+import { clientKey, readEntries, readSite, storageMode, takeRateLimit, writeEntries } from "./_lib/store.js";
 
 const ENTRY_LIMIT = 100;
 
-export async function GET(): Promise<Response> {
+export async function GET(request: Request): Promise<Response> {
   try {
-    const entries = await readEntries();
+    const host = requestHost(request);
+    const site = await readSite(host);
+    if (site.needsSetup) return json({ entries: [], storage: storageMode() });
+    const entries = await readEntries(host);
     return json({ entries, storage: storageMode() });
   } catch (error) {
     console.error("[api/guestbook] GET failed", error);
@@ -21,6 +25,9 @@ export async function POST(request: Request): Promise<Response> {
       return json({ error: "Body must be a JSON object." }, 400);
     }
     const record = body as { username?: unknown; message?: unknown; website?: unknown };
+    const host = requestHost(request);
+    const site = await readSite(host);
+    if (site.needsSetup) return json({ error: "This site isn’t set up yet." }, 409);
     const website = typeof record.website === "string" ? record.website.trim() : "";
     const key = clientKey(request);
 
@@ -43,8 +50,8 @@ export async function POST(request: Request): Promise<Response> {
       message: validated.message,
       createdAt: new Date().toISOString(),
     };
-    const current = await readEntries();
-    await writeEntries([entry, ...current].slice(0, ENTRY_LIMIT));
+    const current = await readEntries(host);
+    await writeEntries(host, [entry, ...current].slice(0, ENTRY_LIMIT));
     console.info("[api/guestbook] entry created");
     return json({ ok: true, entry }, 201);
   } catch (error) {
@@ -56,7 +63,7 @@ export async function POST(request: Request): Promise<Response> {
 
 export async function DELETE(request: Request): Promise<Response> {
   try {
-    const denied = requireAuth(request);
+    const denied = await requireAuth(request);
     if (denied) return denied;
     const url = new URL(request.url);
     let id = url.searchParams.get("id") ?? "";
@@ -68,10 +75,11 @@ export async function DELETE(request: Request): Promise<Response> {
       }
     }
     if (!/^[a-zA-Z0-9-]{8,80}$/.test(id)) return json({ error: "Missing guestbook entry id." }, 400);
-    const current = await readEntries();
+    const host = requestHost(request);
+    const current = await readEntries(host);
     const next = current.filter((entry) => entry.id !== id);
     if (next.length === current.length) return json({ error: "Entry not found." }, 404);
-    await writeEntries(next);
+    await writeEntries(host, next);
     console.info("[api/guestbook] entry deleted");
     return json({ ok: true });
   } catch (error) {

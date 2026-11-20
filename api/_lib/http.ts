@@ -1,4 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
+import { isPrimaryHost, requestHost } from "./host.js";
+import { verifyPassword } from "./password.js";
+import { readPassword } from "./store.js";
 
 export class HttpError extends Error {
   status: number;
@@ -40,23 +43,36 @@ function safeEqual(given: string, expected: string): boolean {
   return timingSafeEqual(left, right);
 }
 
-export function passwordConfigured(): boolean {
-  return Boolean(process.env.ADMIN_PASSWORD);
-}
-
-export function authorized(request: Request): boolean {
-  const expected = process.env.ADMIN_PASSWORD;
-  if (!expected) return false;
+export function bearer(request: Request): string | null {
   const header = request.headers.get("authorization") ?? "";
   const match = /^Bearer\s+(\S.*)$/i.exec(header);
-  if (!match) return false;
-  return safeEqual(match[1], expected);
+  return match ? match[1] : null;
 }
 
-export function requireAuth(request: Request): Response | null {
-  if (!passwordConfigured()) {
+export async function authorized(request: Request): Promise<boolean> {
+  const host = requestHost(request);
+  const given = bearer(request);
+  const record = await readPassword(host);
+  if (record) {
+    if (!given) return false;
+    return verifyPassword(given, record);
+  }
+  if (!isPrimaryHost(host)) return false;
+  const expected = process.env.ADMIN_PASSWORD;
+  if (!expected || !given) return false;
+  return safeEqual(given, expected);
+}
+
+export async function passwordConfigured(request: Request): Promise<boolean> {
+  const host = requestHost(request);
+  if (await readPassword(host)) return true;
+  return isPrimaryHost(host) && Boolean(process.env.ADMIN_PASSWORD);
+}
+
+export async function requireAuth(request: Request): Promise<Response | null> {
+  if (!(await passwordConfigured(request))) {
     return json({ error: "No password is set up." }, 503);
   }
-  if (!authorized(request)) return json({ error: "Wrong password." }, 401);
+  if (!(await authorized(request))) return json({ error: "Wrong password." }, 401);
   return null;
 }

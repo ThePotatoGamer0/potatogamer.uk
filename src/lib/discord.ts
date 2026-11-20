@@ -69,7 +69,7 @@ export function discordAssetUrl(applicationId: string | undefined, asset: string
   return `https://cdn.discordapp.com/app-assets/${applicationId}/${asset}.png`;
 }
 
-export function displayName(user: DiscordUser | undefined, fallback = "ThePotatoGamer"): string {
+export function displayName(user: DiscordUser | undefined, fallback = "Home"): string {
   if (!user) return fallback;
   return user.global_name || user.display_name || user.username || fallback;
 }
