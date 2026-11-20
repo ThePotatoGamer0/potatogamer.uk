@@ -1,8 +1,62 @@
 export const OWNER_DISCORD_ID = "639906782658953256";
 
-export const ICON_NAMES = ["discord", "github", "link", "youtube", "twitch", "mail"] as const;
+export const ICON_NAMES = [
+  "discord",
+  "github",
+  "youtube",
+  "twitch",
+  "kick",
+  "instagram",
+  "facebook",
+  "x",
+  "tiktok",
+  "threads",
+  "bluesky",
+  "mastodon",
+  "reddit",
+  "telegram",
+  "whatsapp",
+  "snapchat",
+  "pinterest",
+  "tumblr",
+  "steam",
+  "spotify",
+  "soundcloud",
+  "patreon",
+  "kofi",
+  "mail",
+  "link",
+] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];
+
+export const ICON_LABELS: Record<IconName, string> = {
+  discord: "Discord",
+  github: "GitHub",
+  youtube: "YouTube",
+  twitch: "Twitch",
+  kick: "Kick",
+  instagram: "Instagram",
+  facebook: "Facebook",
+  x: "X",
+  tiktok: "TikTok",
+  threads: "Threads",
+  bluesky: "Bluesky",
+  mastodon: "Mastodon",
+  reddit: "Reddit",
+  telegram: "Telegram",
+  whatsapp: "WhatsApp",
+  snapchat: "Snapchat",
+  pinterest: "Pinterest",
+  tumblr: "Tumblr",
+  steam: "Steam",
+  spotify: "Spotify",
+  soundcloud: "SoundCloud",
+  patreon: "Patreon",
+  kofi: "Ko-fi",
+  mail: "Mail",
+  link: "Link",
+};
 
 export const SPEC_ICONS = ["cpu", "gpu", "memory-stick", "hard-drive", "circuit-board"] as const;
 

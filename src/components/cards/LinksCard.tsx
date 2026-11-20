@@ -4,7 +4,7 @@ import { QuietState } from "../QuietState";
 
 export function LinksCard({ links }: { links: SiteLink[] }) {
   return (
-    <section className="card">
+    <section className="card" id="links">
       <p className="kicker">Links</p>
       <h2>Find me</h2>
       {links.length === 0 ? (

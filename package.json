@@ -10,12 +10,16 @@
   },
   "dependencies": {
     "@material/material-color-utilities": "^0.3.0",
+    "@resvg/resvg-wasm": "^2.6.2",
     "@upstash/redis": "^1.35.6",
+    "@vercel/functions": "^3.11.3",
     "lucide-react": "^1.75.0",
     "material-shapes-ts": "^0.3.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-router-dom": "^7.9.6"
+    "react-router-dom": "^7.9.6",
+    "satori": "^0.63.2",
+    "simple-icons": "^16.38.0"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

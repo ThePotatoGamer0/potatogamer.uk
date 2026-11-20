@@ -15,7 +15,7 @@ export function FriendsCard({ friends }: { friends: FriendConfig[] }) {
   const { users: profiles, statuses } = useDiscordProfiles();
 
   return (
-    <section className="card friends">
+    <section className="card friends" id="friends">
       <p className="kicker">Friends</p>
       <h2>People</h2>
       {friends.length === 0 ? (

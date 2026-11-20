@@ -1,6 +1,6 @@
-import { argbFromRgb, hexFromArgb, QuantizerCelebi, Score } from "@material/material-color-utilities";
+import { argbFromRgb, hexFromArgb, Hct, QuantizerCelebi, Score } from "@material/material-color-utilities";
 
-/** Pull a theme seed from a Discord avatar with Material's quantizer. */
+/** The color behind the subject. Hair and clothing otherwise turn a pink picture brown. */
 export async function sampleAvatarSeed(url: string): Promise<string | null> {
   const image = new Image();
   image.crossOrigin = "anonymous";
@@ -27,15 +27,31 @@ export async function sampleAvatarSeed(url: string): Promise<string | null> {
     return null;
   }
 
-  const pixels: number[] = [];
-  for (let index = 0; index < data.length; index += 4) {
-    const alpha = data[index + 3];
-    if (alpha < 200) continue;
-    pixels.push(argbFromRgb(data[index] ?? 0, data[index + 1] ?? 0, data[index + 2] ?? 0));
+  const field: number[] = [];
+  const all: number[] = [];
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const offset = (y * size + x) * 4;
+      const alpha = data[offset + 3];
+      if (alpha < 200) continue;
+      const argb = argbFromRgb(data[offset] ?? 0, data[offset + 1] ?? 0, data[offset + 2] ?? 0);
+      all.push(argb);
+      const dx = x + 0.5 - size / 2;
+      const dy = y + 0.5 - size / 2;
+      if (Math.hypot(dx, dy) > size * 0.34) field.push(argb);
+    }
   }
-  if (pixels.length === 0) return null;
+  if (all.length === 0) return null;
 
-  const ranked = Score.score(QuantizerCelebi.quantize(pixels, 128));
-  const seed = ranked[0];
+  const seed = pickBackdrop(field) ?? pickBackdrop(all) ?? Score.score(QuantizerCelebi.quantize(all, 128))[0];
   return typeof seed === "number" ? hexFromArgb(seed) : null;
+}
+
+function pickBackdrop(pixels: number[]): number | null {
+  if (pixels.length === 0) return null;
+  const ranked = [...QuantizerCelebi.quantize(pixels, 32).entries()]
+    .map(([argb, population]) => ({ argb, population, hct: Hct.fromInt(argb) }))
+    .filter(({ hct }) => hct.chroma >= 8 && hct.tone >= 68 && hct.tone <= 97)
+    .sort((a, b) => b.population - a.population);
+  return ranked[0]?.argb ?? null;
 }

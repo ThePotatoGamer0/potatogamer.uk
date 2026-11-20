@@ -40,7 +40,7 @@ export function ProfileCard({
   }, []);
 
   return (
-    <section className="card profile-card">
+    <section className="card profile-card" id="profile">
       <p className="kicker">Profile</p>
       <div className="profile-head">
         {user ? (

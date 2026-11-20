@@ -76,7 +76,7 @@ export function GuestbookCard() {
   }
 
   return (
-    <section className="card guestbook">
+    <section className="card guestbook" id="guestbook">
       <p className="kicker">Guestbook</p>
       <h2>Leave a note</h2>
       <form className="guest-form" onSubmit={onSubmit}>

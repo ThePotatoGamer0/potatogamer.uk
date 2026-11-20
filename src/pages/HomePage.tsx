@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { cardFromHash, type OgCard } from "../../shared/og";
 import { ActivityCard } from "../components/cards/ActivityCard";
 import { FriendsCard } from "../components/cards/FriendsCard";
 import { GuestbookCard } from "../components/cards/GuestbookCard";
@@ -10,9 +11,23 @@ import { ProfileCard } from "../components/cards/ProfileCard";
 import { CardBoundary } from "../components/Toast";
 import { useConfig } from "../context/AppProviders";
 
-export function HomePage() {
+export function HomePage({ focus }: { focus?: OgCard }) {
   const { config, error } = useConfig();
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const hashCard = useHashCard();
+  const cardId = focus ?? hashCard;
+
+  useEffect(() => {
+    if (!cardId) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(cardId)?.scrollIntoView({
+        behavior: reduce ? "auto" : "smooth",
+        block: "start",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [cardId]);
 
   useEffect(() => {
     if (!highlightId) return;
@@ -82,4 +97,14 @@ export function HomePage() {
       </div>
     </div>
   );
+}
+
+function useHashCard(): OgCard | undefined {
+  const [hash, setHash] = useState(() => window.location.hash);
+  useEffect(() => {
+    const onHash = () => setHash(window.location.hash);
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+  return cardFromHash(hash);
 }

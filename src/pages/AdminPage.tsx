@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
-import { ICON_NAMES, MEDIA_KINDS, SPEC_ICONS, mediaArt, normalizeConfig, type FriendConfig, type GuestbookEntry, type KvRow, type MediaKind, type MediaPick, type SiteConfig, type SiteLink, type SpecIcon, type SpecRow } from "../../shared/site";
+import { ICON_LABELS, ICON_NAMES, MEDIA_KINDS, SPEC_ICONS, mediaArt, normalizeConfig, type FriendConfig, type GuestbookEntry, type KvRow, type MediaKind, type MediaPick, type SiteConfig, type SiteLink, type SpecIcon, type SpecRow } from "../../shared/site";
 import { useConfig } from "../context/AppProviders";
 import { ApiError, api } from "../lib/api";
 import { imageFileFromClipboard, imageFileToDataUri } from "../lib/interestImage";
@@ -603,7 +603,7 @@ function LinkEditor({ links, onChange }: { links: SiteLink[]; onChange: (links: 
               <select value={link.icon} onChange={(event) => onChange(updateRow(links, index, { ...link, icon: event.target.value as SiteLink["icon"] }))}>
                 {ICON_NAMES.map((icon) => (
                   <option key={icon} value={icon}>
-                    {icon}
+                    {ICON_LABELS[icon]}
                   </option>
                 ))}
               </select>

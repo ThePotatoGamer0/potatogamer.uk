@@ -1,6 +1,10 @@
+import { readFile } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import react from "@vitejs/plugin-react";
-import { defineConfig, loadEnv, type Plugin } from "vite";
+import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from "vite";
+import { applyOg, isOgPath, type OgDocument } from "./shared/og";
 
 function localApi(): Plugin {
   return {
@@ -13,22 +17,88 @@ function localApi(): Plugin {
 
       server.middlewares.use((req, res, next) => {
         const pathname = (req.url ?? "").split("?")[0];
-        if (pathname !== "/api/config" && pathname !== "/api/guestbook" && pathname !== "/api/discord" && pathname !== "/api/media") {
-          next();
+        if (pathname === "/api/og") {
+          void serveOgImage(server, req, res).catch((error: unknown) => {
+            console.error("[vite] og image failed", error);
+            if (!res.headersSent) {
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "text/plain; charset=utf-8");
+              res.end("Could not render that preview.");
+            }
+          });
           return;
         }
 
-        void handle(server, req, res, pathname).catch((error: unknown) => {
-          console.error("[vite] local API failed", error);
-          if (!res.headersSent) {
-            res.statusCode = 500;
-            res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify({ error: "Local API failed." }));
-          }
-        });
+        if (API_MODULES[pathname]) {
+          void handle(server, req, res, pathname).catch((error: unknown) => {
+            console.error("[vite] local API failed", error);
+            if (!res.headersSent) {
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: "Local API failed." }));
+            }
+          });
+          return;
+        }
+
+        if ((req.method === "GET" || req.method === "HEAD") && isOgPath(pathname)) {
+          void serveOgHtml(server, req, res).catch((error: unknown) => {
+            console.error("[vite] og html failed", error);
+            if (!res.headersSent) next();
+          });
+          return;
+        }
+
+        next();
       });
     },
   };
+}
+
+const API_MODULES: Record<string, string> = {
+  "/api/config": "/api/config.ts",
+  "/api/guestbook": "/api/guestbook.ts",
+  "/api/discord": "/api/discord.ts",
+  "/api/media": "/api/media.ts",
+};
+
+async function serveOgImage(server: ViteDevServer, req: IncomingMessage, res: ServerResponse) {
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    res.statusCode = 405;
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.end("Method not allowed.");
+    return;
+  }
+  const mod = (await server.ssrLoadModule("/api/_lib/ogDocument.ts")) as {
+    buildOgDocument: (request: Request) => Promise<OgDocument>;
+  };
+  const doc = await mod.buildOgDocument(await toRequest(req));
+  const rendererHref = pathToFileURL(path.join(server.config.root, "api/_lib/ogImage.mjs")).href;
+  const renderer = (await import(rendererHref)) as { renderOgImage: (document: OgDocument) => Promise<Buffer> };
+  const body = await renderer.renderOgImage(doc);
+  res.statusCode = 200;
+  res.setHeader("Content-Type", "image/png");
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Content-Length", body.length);
+  res.end(req.method === "HEAD" ? undefined : body);
+}
+
+async function serveOgHtml(server: ViteDevServer, req: IncomingMessage, res: ServerResponse) {
+  const raw = await readFile(fileURLToPath(new URL("./index.html", import.meta.url)), "utf8");
+  const transformed = await server.transformIndexHtml(req.url ?? "/", raw);
+  const mod = (await server.ssrLoadModule("/api/_lib/ogDocument.ts")) as {
+    buildOgDocument: (request: Request) => Promise<OgDocument>;
+  };
+  const doc = await mod.buildOgDocument(await toRequest(req));
+  const html = applyOg(transformed, doc);
+  res.statusCode = 200;
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "no-store");
+  if (req.method === "HEAD") {
+    res.end();
+    return;
+  }
+  res.end(html);
 }
 
 async function handle(
@@ -37,13 +107,7 @@ async function handle(
   res: ServerResponse,
   pathname: string,
 ) {
-  const modules: Record<string, string> = {
-    "/api/config": "/api/config.ts",
-    "/api/guestbook": "/api/guestbook.ts",
-    "/api/discord": "/api/discord.ts",
-    "/api/media": "/api/media.ts",
-  };
-  const mod = await server.ssrLoadModule(modules[pathname] ?? "/api/config.ts");
+  const mod = await server.ssrLoadModule(API_MODULES[pathname] ?? "/api/config.ts");
   const method = req.method ?? "GET";
   const handler = mod[method];
   if (typeof handler !== "function") {

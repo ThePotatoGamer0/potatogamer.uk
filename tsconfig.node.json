@@ -15,5 +15,5 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "api", "shared"]
+  "include": ["vite.config.ts", "middleware.ts", "api", "shared"]
 }

@@ -17,7 +17,7 @@ export function ActivityCard() {
   const now = useTicker(Boolean(owner && (owner.listening_to_spotify || owner.activities.some((activity) => activity.timestamps?.start))));
 
   return (
-    <section className="card activity-card" aria-live="polite">
+    <section className="card activity-card" id="activity" aria-live="polite">
       <p className="kicker">Live activity</p>
       <h2>Right now</h2>
       {!ready && !owner ? (

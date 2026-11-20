@@ -1,4 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useLocation } from "react-router-dom";
+import { cardFromPath } from "../../shared/og";
 import { defaultConfig, OWNER_DISCORD_ID, type SiteConfig, type StorageMode } from "../../shared/site";
 import { useLanyard, type LanyardState } from "../hooks/useLanyard";
 import { api } from "../lib/api";
@@ -106,10 +108,12 @@ function LanyardBridge({ children }: { children: ReactNode }) {
     return [...unique];
   }, [config.friends]);
   const lanyard = useLanyard(ids);
+  const { pathname } = useLocation();
   const quote = withSpeechMarks(kvString(lanyard.owner?.kv, "quote").replace(/\s+/g, " "));
   useEffect(() => {
+    if (cardFromPath(pathname)) return;
     document.title = quote ? `${quote} - ThePotatoGamer` : "ThePotatoGamer";
-  }, [quote]);
+  }, [pathname, quote]);
 
   return (
     <LanyardContext.Provider value={lanyard}>
