@@ -1,10 +1,12 @@
-import { useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
 import * as ContextMenu from "@radix-ui/react-context-menu";
 import { useNavigate } from "react-router-dom";
 import { isOgCard, type OgCard } from "../../shared/og";
 import { Toast } from "./Toast";
 
 const MODIFIER = /Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘" : "Ctrl+";
+const DOUBLE_CLICK_MS = 500;
+const DOUBLE_CLICK_DISTANCE = 28;
 
 interface MenuTarget {
   text: string;
@@ -32,10 +34,28 @@ const EMPTY: MenuTarget = {
 
 export function SiteMenu({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
   const [target, setTarget] = useState<MenuTarget>(EMPTY);
   const [notice, setNotice] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const afterClose = useRef<(() => void) | null>(null);
   const noticeTimer = useRef<number | null>(null);
+  const lastRightClick = useRef({ time: 0, x: 0, y: 0 });
+
+  useEffect(() => {
+    const onContextMenu = (event: MouseEvent) => {
+      const previous = lastRightClick.current;
+      const dx = event.clientX - previous.x;
+      const dy = event.clientY - previous.y;
+      const double =
+        event.timeStamp - previous.time < DOUBLE_CLICK_MS && dx * dx + dy * dy < DOUBLE_CLICK_DISTANCE ** 2;
+      lastRightClick.current = { time: event.timeStamp, x: event.clientX, y: event.clientY };
+      if (!double) return;
+      event.stopImmediatePropagation();
+      setOpen(false);
+    };
+    window.addEventListener("contextmenu", onContextMenu, true);
+    return () => window.removeEventListener("contextmenu", onContextMenu, true);
+  }, []);
 
   function flash(text: string) {
     if (noticeTimer.current !== null) window.clearTimeout(noticeTimer.current);
@@ -111,7 +131,7 @@ export function SiteMenu({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ContextMenu.Root>
+    <ContextMenu.Root modal={false} open={open} onOpenChange={setOpen}>
       <ContextMenu.Trigger asChild>
         <div className="scroller" onContextMenu={(event) => setTarget(readTarget(event))}>
           {children}
@@ -183,7 +203,7 @@ function MenuItem({
   );
 }
 
-function readTarget(event: MouseEvent): MenuTarget {
+function readTarget(event: ReactMouseEvent): MenuTarget {
   const node = event.target instanceof Element ? event.target : null;
   const field = textField(node);
   const secret = field instanceof HTMLInputElement && field.type === "password";
