@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { deflateSync } from "node:zlib";
@@ -102,6 +103,7 @@ function cardImage(doc, picture) {
     label: plain(item?.label),
     detail: plain(item?.detail),
     image: picture ? item?.image || null : null,
+    mark: typeof item?.mark === "string" ? item.mark : "",
   }));
   const showAvatar = Boolean(picture && doc.pictureKind === "avatar" && doc.picture);
   const showPoster = Boolean(picture && doc.layout === "media" && doc.picture);
@@ -171,6 +173,8 @@ function body(layout, items, colors, poster) {
   if (layout === "profile") return chips(items, colors);
   if (layout === "tiles") return tiles(items, colors);
   if (layout === "media") return shelf(items, colors, poster);
+  if (layout === "specs") return specs(items, colors);
+  if (layout === "activity") return activity(items, colors);
   return rows(items, colors);
 }
 
@@ -213,26 +217,159 @@ function rows(items, colors) {
   return h(
     "div",
     { style: { display: "flex", flexDirection: "column", width: INNER, marginTop: 22 } },
-    ...items.slice(0, 5).map((item) =>
-      h(
+    ...items.slice(0, 5).map((item) => {
+      const lead = item.image || brandMark(item.mark) ? 58 : 0;
+      const copy = INNER - 32 - lead;
+      return h(
         "div",
         {
           style: {
             display: "flex",
-            flexDirection: "column",
+            alignItems: "center",
             width: INNER,
             boxSizing: "border-box",
             background: colors.tile,
             borderRadius: 18,
-            padding: "12px 16px",
+            padding: "10px 14px",
             marginBottom: 10,
             overflow: "hidden",
           },
         },
-        text(item.label, { width: INNER - 32, fontSize: 26, lineHeight: 1.2 }),
-        item.detail ? text(item.detail, { width: INNER - 32, fontSize: 20, lineHeight: 1.3, marginTop: 4, color: colors.muted }) : null,
-      ),
-    ),
+        item.image
+          ? h("img", {
+              src: item.image,
+              width: 46,
+              height: 46,
+              style: { borderRadius: 23, marginRight: 12, objectFit: "cover" },
+            })
+          : iconBox(item.mark, colors),
+        h(
+          "div",
+          { style: { display: "flex", flexDirection: "column", width: copy } },
+          h(
+            "div",
+            { style: { display: "flex", alignItems: "center", width: copy } },
+            text(item.label, { fontSize: 24, lineHeight: 1.2 }),
+            statusDot(item.mark),
+          ),
+          item.detail ? text(item.detail, { width: copy, fontSize: 18, lineHeight: 1.3, marginTop: 2, color: colors.muted }) : null,
+        ),
+      );
+    }),
+  );
+}
+
+function specs(items, colors) {
+  return h(
+    "div",
+    { style: { display: "flex", flexWrap: "wrap", width: INNER, marginTop: 22 } },
+    ...items.slice(0, 6).map((item, index) => {
+      const copy = TILE - 24 - 54;
+      const [value, extra] = splitDetail(item.detail);
+      return h(
+        "div",
+        {
+          style: {
+            display: "flex",
+            alignItems: "center",
+            width: TILE,
+            boxSizing: "border-box",
+            background: colors.tile,
+            borderRadius: 18,
+            padding: 12,
+            marginRight: index % 2 === 0 ? GAP : 0,
+            marginBottom: GAP,
+            overflow: "hidden",
+          },
+        },
+        iconBox(item.mark, colors),
+        h(
+          "div",
+          { style: { display: "flex", flexDirection: "column", width: copy } },
+          text(item.label.toUpperCase(), { width: copy, fontSize: 14, letterSpacing: 1, color: colors.muted }),
+          text(value, { width: copy, fontSize: 22, lineHeight: 1.2, marginTop: 2 }),
+          extra ? text(extra, { width: copy, fontSize: 16, marginTop: 2, color: colors.muted }) : null,
+        ),
+      );
+    }),
+  );
+}
+
+function activity(items, colors) {
+  const status = items[0];
+  const now = items[1];
+  const art = now?.image ? 88 : 0;
+  const copy = INNER - 28 - art - (art ? 16 : 0);
+  return h(
+    "div",
+    { style: { display: "flex", flexDirection: "column", width: INNER, marginTop: 22 } },
+    status
+      ? h(
+          "div",
+          {
+            style: {
+              display: "flex",
+              alignItems: "center",
+              alignSelf: "flex-start",
+              background: colors.tile,
+              borderRadius: 999,
+              padding: "8px 14px",
+              marginBottom: 12,
+            },
+          },
+          statusDot(status.mark, 0),
+          text(status.label, { fontSize: 22, marginLeft: 8 }),
+        )
+      : null,
+    status?.detail
+      ? h(
+          "div",
+          {
+            style: {
+              display: "flex",
+              width: INNER,
+              boxSizing: "border-box",
+              background: colors.tile,
+              borderRadius: 16,
+              padding: "12px 14px",
+              marginBottom: 12,
+            },
+          },
+          text(status.detail, { width: INNER - 28, fontSize: 22 }),
+        )
+      : null,
+    now
+      ? h(
+          "div",
+          {
+            style: {
+              display: "flex",
+              alignItems: "center",
+              width: INNER,
+              boxSizing: "border-box",
+              background: colors.tile,
+              borderRadius: 22,
+              padding: 14,
+              overflow: "hidden",
+            },
+          },
+          now.image
+            ? h("img", {
+                src: now.image,
+                width: 88,
+                height: 88,
+                style: { borderRadius: 12, objectFit: "cover", marginRight: 16 },
+              })
+            : null,
+          h(
+            "div",
+            { style: { display: "flex", flexDirection: "column", width: copy } },
+            now.mark ? text(now.mark.toUpperCase(), { width: copy, fontSize: 16, letterSpacing: 1, color: colors.muted }) : null,
+            text(now.label, { width: copy, fontSize: 30, lineHeight: 1.15, marginTop: now.mark ? 6 : 0 }),
+            now.detail ? text(now.detail, { width: copy, fontSize: 20, marginTop: 6, color: colors.muted }) : null,
+          ),
+        )
+      : null,
   );
 }
 
@@ -360,7 +497,142 @@ function palette(seed) {
     ink: hexFromArgb(scheme.onSurface),
     muted: hexFromArgb(scheme.onSurfaceVariant),
     line: hexFromArgb(scheme.outlineVariant),
+    accent: hexFromArgb(scheme.primaryContainer),
+    onAccent: hexFromArgb(scheme.onPrimaryContainer),
   };
+}
+
+const STATUS_COLOR = {
+  online: "#3ba55d",
+  idle: "#f0b232",
+  dnd: "#ed4245",
+  offline: "#80848e",
+};
+
+const STROKE_MARKS = {
+  link: "M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1M14 11a5 5 0 0 0-7.1-.1l-2 2a5 5 0 0 0 7.1 7.1l1.1-1.1",
+  mail: "M3 5h18v14H3V5zm0 0 9 7 9-7",
+};
+
+function brandMark(mark) {
+  return mark.startsWith("si:") || mark.startsWith("lu:");
+}
+
+function statusDot(mark, marginLeft = 8) {
+  const status = mark.startsWith("st:") ? mark.slice(3) : "";
+  const color = STATUS_COLOR[status];
+  if (!color) return null;
+  return h("div", {
+    style: { width: 12, height: 12, borderRadius: 6, background: color, marginLeft, flex: "none" },
+  });
+}
+
+function iconBox(mark, colors) {
+  const icon = glyph(mark, colors.onAccent, 22);
+  if (!icon) return null;
+  return h(
+    "div",
+    {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 42,
+        height: 42,
+        background: colors.accent,
+        marginRight: 12,
+        flex: "none",
+      },
+    },
+    icon,
+  );
+}
+
+function glyph(mark, color, size) {
+  if (mark.startsWith("si:")) return simpleIcon(mark.slice(3), color, size);
+  if (mark.startsWith("lu:")) return lucideIcon(mark.slice(3), color, size);
+  return null;
+}
+
+const simplePaths = new Map();
+
+function simpleIcon(name, color, size) {
+  if (!/^[a-z0-9]+$/.test(name)) return null;
+  if (STROKE_MARKS[name]) {
+    return h(
+      "svg",
+      {
+        width: size,
+        height: size,
+        viewBox: "0 0 24 24",
+        fill: "none",
+        stroke: color,
+        strokeWidth: 1.8,
+        strokeLinecap: "round",
+        strokeLinejoin: "round",
+      },
+      h("path", { d: STROKE_MARKS[name] }),
+    );
+  }
+  if (!simplePaths.has(name)) {
+    try {
+      const svg = readFileSync(require.resolve(`simple-icons/icons/${name}.svg`), "utf8");
+      simplePaths.set(name, /d="([^"]+)"/.exec(svg)?.[1] ?? "");
+    } catch {
+      simplePaths.set(name, "");
+    }
+  }
+  const path = simplePaths.get(name);
+  if (!path) return null;
+  return h("svg", { width: size, height: size, viewBox: "0 0 24 24" }, h("path", { d: path, fill: color }));
+}
+
+const lucideNodes = new Map();
+
+function lucideIcon(name, color, size) {
+  if (!/^[a-z0-9-]+$/.test(name)) return null;
+  if (!lucideNodes.has(name)) {
+    try {
+      const source = readFileSync(require.resolve(`lucide-react/dist/esm/icons/${name}.mjs`), "utf8");
+      const nodes = [];
+      for (const match of source.matchAll(/\[\s*"(path|rect|circle)",\s*\{([^}]*)\}/g)) {
+        nodes.push([match[1], attrs(match[2])]);
+      }
+      lucideNodes.set(name, nodes);
+    } catch {
+      lucideNodes.set(name, []);
+    }
+  }
+  const nodes = lucideNodes.get(name);
+  if (!nodes?.length) return null;
+  return h(
+    "svg",
+    {
+      width: size,
+      height: size,
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: color,
+      strokeWidth: 1.8,
+      strokeLinecap: "round",
+      strokeLinejoin: "round",
+    },
+    ...nodes.map(([type, props]) => h(type, props)),
+  );
+}
+
+function attrs(source) {
+  const props = {};
+  for (const match of source.matchAll(/([a-z]+): "([^"]*)"/g)) {
+    if (match[1] !== "key") props[match[1]] = match[2];
+  }
+  return props;
+}
+
+function splitDetail(value) {
+  const split = value.indexOf(" · ");
+  if (split === -1) return [value, ""];
+  return [value.slice(0, split), value.slice(split + 3)];
 }
 
 function plain(value) {
