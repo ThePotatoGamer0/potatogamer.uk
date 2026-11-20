@@ -216,8 +216,8 @@ function cardImage(doc, picture) {
             doc.lede
               ? text(plain(doc.lede), {
                   width: INNER,
-                  fontSize: 42,
-                  lineHeight: 1.3,
+                  fontSize: quoteSize(plain(doc.lede), INNER, 230),
+                  lineHeight: 1.2,
                   textAlign: "center",
                   justifyContent: "center",
                   color: colors.ink,
@@ -235,14 +235,15 @@ function cardImage(doc, picture) {
 function header(doc, colors, showAvatar) {
   const large = doc.layout === "profile";
   const handle = large ? plain(doc.lines?.[0]) : "";
-  const avatar = large ? 176 : 112;
-  const titleWidth = showAvatar ? INNER - avatar - 28 : INNER;
+  const avatar = large ? 220 : 112;
+  const titleWidth = showAvatar ? INNER - avatar - 32 : INNER;
+  const nameSize = large ? fitFont(plain(doc.heading), titleWidth, { max: 108, min: 64, ratio: 0.62 }) : 48;
   const title = h(
     "div",
     { style: { display: "flex", flexDirection: "column", width: titleWidth } },
-    text(plain(doc.kicker).toUpperCase(), { fontSize: large ? 20 : 18, letterSpacing: 2, color: colors.muted }),
-    text(plain(doc.heading), { width: titleWidth, fontSize: large ? 64 : 48, lineHeight: 1.05, marginTop: 8 }),
-    handle.startsWith("@") ? text(handle, { fontSize: 30, marginTop: 8, color: colors.muted }) : null,
+    text(plain(doc.kicker).toUpperCase(), { fontSize: large ? 22 : 18, letterSpacing: 2, color: colors.muted }),
+    text(plain(doc.heading), { width: titleWidth, fontSize: nameSize, lineHeight: 1.02, marginTop: 10 }),
+    handle.startsWith("@") ? text(handle, { fontSize: 40, marginTop: 10, color: colors.muted }) : null,
   );
   if (!showAvatar) return title;
   return h(
@@ -561,6 +562,21 @@ function shelf(items, colors, poster) {
       ),
     ),
   );
+}
+
+function fitFont(value, width, { max, min, ratio }) {
+  const length = Math.max(String(value).length, 1);
+  return Math.max(min, Math.min(max, Math.floor(width / (length * ratio))));
+}
+
+function quoteSize(value, width, maxHeight) {
+  const length = Math.max(String(value).length, 1);
+  for (let size = 96; size >= 46; size -= 2) {
+    const perLine = Math.max(8, Math.floor(width / (size * 0.5)));
+    const lines = Math.ceil(length / perLine);
+    if (lines * size * 1.22 <= maxHeight) return size;
+  }
+  return 46;
 }
 
 function text(value, style) {

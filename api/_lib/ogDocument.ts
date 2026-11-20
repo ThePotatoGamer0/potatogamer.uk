@@ -78,7 +78,7 @@ export async function buildOgDocument(request: Request): Promise<OgDocument> {
   const lede = clip(built.lede, 160);
   const title = clip(built.title, 80);
   const stamp = contentStamp([
-    "card-png",
+    "card-profile",
     title,
     description,
     heading,
